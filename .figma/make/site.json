@@ -1,0 +1,10 @@
+{
+  "description": "Streamline meeting management with comprehensive tools for agenda collection, real-time tracking, and post-meeting follow-up to enhance productivity.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
