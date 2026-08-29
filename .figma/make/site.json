@@ -1,5 +1,7 @@
 {
-  "description": "Streamline meeting management with comprehensive tools for agenda collection, real-time tracking, and post-meeting follow-up to enhance productivity.",
+  "title": "会枢",
+  "description": "集团议事中枢：议题申报、会中研判、纪要归档、督办落地。",
+  "language": "zh-CN",
   "robots": {
     "index": false
   },

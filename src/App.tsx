@@ -206,6 +206,18 @@ const INIT_MEETINGS: Meeting[] = [
     notes: '',
   },
   {
+    id: 'M2026-08C',
+    title: '数字化转型三期项目协调推进会',
+    typeId: 'coordination',
+    date: '2026-08-25', time: '14:00', endTime: '16:00',
+    location: '总部大厦28层第一会议室',
+    chair: '张副总（运营）',
+    attendees: ['张副总（运营）', '王总助', '张慧敏', '李建国', '陈志远'],
+    meetingTopics: [{ topicId: 'T002', order: 1 }],
+    status: '已结束',
+    notes: '',
+  },
+  {
     id: 'M2026-07',
     title: '集团2026年7月总经理办公会',
     typeId: 'gm-office',
@@ -213,6 +225,30 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦28层第一会议室',
     chair: '马总（集团总经理）',
     attendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '赵国栋', '孙丽华'],
+    meetingTopics: [],
+    status: '已结束',
+    notes: '会议纪要已归档',
+  },
+  {
+    id: 'M2026-06',
+    title: '2026年6月安全生产专题会',
+    typeId: 'special',
+    date: '2026-06-20', time: '14:00', endTime: '16:30',
+    location: '总部大厦28层第一会议室',
+    chair: '李副总（常务）',
+    attendees: ['李副总（常务）', '王总助', '周建平', '孙丽华'],
+    meetingTopics: [],
+    status: '已结束',
+    notes: '会议纪要已归档',
+  },
+  {
+    id: 'M2026-05',
+    title: '2026年5月人才发展专题会',
+    typeId: 'special',
+    date: '2026-05-16', time: '09:30', endTime: '11:30',
+    location: '总部大厦16层党建活动室',
+    chair: '李副总（常务）',
+    attendees: ['李副总（常务）', '王芳', '王总助'],
     meetingTopics: [],
     status: '已结束',
     notes: '会议纪要已归档',
@@ -245,7 +281,7 @@ const ACTIONS: ActionItem[] = [
     ],
   },
   {
-    id: 'A003', meetingId: 'M2026-07',
+    id: 'A003', meetingId: 'M2026-06',
     title: '集团安全生产隐患排查整改',
     description: '针对安全生产专项检查发现的37项隐患，制定分级整改计划，逐项完成销号。',
     assignee: '周建平', follower: '王总助', dept: '安全环保部',
@@ -258,7 +294,7 @@ const ACTIONS: ActionItem[] = [
     ],
   },
   {
-    id: 'A005', meetingId: 'M2026-07',
+    id: 'A005', meetingId: 'M2026-05',
     title: '员工持股计划（ESOP）方案设计',
     description: '制定第一期员工持股计划，覆盖核心骨干约500人，总规模不超过净资产的5%。',
     assignee: '王芳', follower: '李副总（常务）', dept: '人力资源部',
@@ -274,6 +310,7 @@ const ACTIONS: ActionItem[] = [
 
 const MEETING_TITLE_MAP: Record<string, string> = {
   'M2026-08': '集团2026年8月总经理办公会',
+  'M2026-08C': '数字化转型三期项目协调推进会',
   'M2026-07': '集团2026年7月总经理办公会',
   'M2026-06': '2026年6月安全生产专题会',
   'M2026-05': '2026年5月人才发展专题会',
@@ -1349,23 +1386,71 @@ function ProgressRing({ pct, color, center }: { pct: number; color: string; cent
 }
 
 function Dashboard({ onNav }: { onNav: (s: NavSection) => void }) {
+  const asOf = '2026-08-28'
+  const monthKey = asOf.slice(0, 7)
+  const meetings = INIT_MEETINGS
+  const monthMeetings = meetings.filter(m => m.date.startsWith(monthKey))
+  const ended = meetings.filter(m => m.status === '已结束')
+  const archived = ended.filter(m => INIT_MINUTES[m.id])
+  const pendingMinutes = ended.filter(m => !INIT_MINUTES[m.id])
+  const archiveRate = ended.length ? Math.round((archived.length / ended.length) * 100) : 0
+  const finishRate = meetings.length ? Math.round((ended.length / meetings.length) * 100) : 0
+
+  const topicFlow: { key: TopicStatus; n: number }[] = (['待安排', '已安排', '锁定中', '已上会'] as TopicStatus[]).map(key => ({
+    key, n: INIT_TOPICS.filter(t => t.status === key).length,
+  }))
+  const topicPending = topicFlow[0].n
+  const topicMoved = INIT_TOPICS.length - topicPending
+  const topicRate = INIT_TOPICS.length ? Math.round((topicMoved / INIT_TOPICS.length) * 100) : 0
+
+  const actionN = {
+    跟进中: ACTIONS.filter(a => a.status === '跟进中').length,
+    待确认关闭: ACTIONS.filter(a => a.status === '待确认关闭').length,
+    已关闭: ACTIONS.filter(a => a.status === '已关闭').length,
+  }
+  const inProgress = actionN.跟进中 + actionN.待确认关闭
+  const closeRate = ACTIONS.length ? Math.round((actionN.已关闭 / ACTIONS.length) * 100) : 0
+  const overdue = ACTIONS.filter(a => a.status !== '已关闭' && a.deadline < asOf)
+  const dueSoon = ACTIONS.filter(a => a.status === '跟进中' && a.deadline >= asOf && a.deadline <= '2026-09-07')
+  const actionMax = Math.max(...Object.values(actionN), 1)
+
+  const typeRows = MEETING_TYPES.map(type => {
+    const list = meetings.filter(m => m.typeId === type.id)
+    if (list.length === 0) return null
+    const done = list.filter(m => m.status === '已结束')
+    return {
+      name: type.name,
+      total: list.length,
+      prep: list.filter(m => m.status === '筹备中').length,
+      done: done.length,
+      archived: done.filter(m => INIT_MINUTES[m.id]).length,
+    }
+  }).filter(Boolean) as { name: string; total: number; prep: number; done: number; archived: number }[]
+
+  const alerts = [
+    ...pendingMinutes.map(m => ({ id: m.id, kind: '纪要未归档', title: m.title, extra: `${m.date} 已结束`, go: 'minutes' as NavSection })),
+    ...ACTIONS.filter(a => a.status === '待确认关闭').map(a => ({ id: a.id, kind: '待确认关闭', title: a.title, extra: `${a.assignee} · 截止 ${a.deadline}`, go: 'actions' as NavSection })),
+    ...dueSoon.map(a => ({ id: a.id, kind: '即将到期', title: a.title, extra: `${a.assignee} · 截止 ${a.deadline}`, go: 'actions' as NavSection })),
+    ...overdue.map(a => ({ id: a.id, kind: '已逾期', title: a.title, extra: `${a.assignee} · 截止 ${a.deadline}`, go: 'actions' as NavSection })),
+  ]
+
   const kpis = [
-    { label: '本月会议', value: '3 场', tag: '推进中', tone: 'navy', sub: '计划 3 场，已完成 1 场', pct: 33, ring: '33%', color: '#1b365d' },
-    { label: '待审议议题', value: '4 项', tag: '待安排', tone: 'gold', sub: '本月已收到 5 份申报', pct: 80, ring: '4', color: '#c4a35a' },
-    { label: '进行中交办', value: '8 项', tag: '逾期风险', tone: 'warn', sub: '跟进中 8 项，逾期风险 2 项', pct: 25, ring: '8', color: '#8b3a3a' },
-    { label: '本月已关闭', value: '85%', tag: '正常关闭', tone: 'ok', sub: '已关闭 3 项，按时关闭率 85%', pct: 85, ring: '85%', color: '#2f5d4a' },
+    { label: '会议办结率', value: `${finishRate}%`, tag: `本年 ${meetings.length} 场`, tone: 'navy', sub: `本月 ${monthMeetings.length} 场 · 已结束 ${ended.length} · 筹备中 ${meetings.length - ended.length}`, pct: finishRate, ring: `${finishRate}%`, color: '#1b365d', go: 'meetings' as NavSection },
+    { label: '纪要归档率', value: `${archiveRate}%`, tag: pendingMinutes.length ? `待归档 ${pendingMinutes.length}` : '已清零', tone: pendingMinutes.length ? 'gold' : 'ok', sub: `已结束 ${ended.length} 场，已归档 ${archived.length} 场`, pct: archiveRate, ring: `${archiveRate}%`, color: '#c4a35a', go: 'minutes' as NavSection },
+    { label: '议题排期率', value: `${topicRate}%`, tag: `待安排 ${topicPending}`, tone: 'gold', sub: `申报 ${INIT_TOPICS.length} 项 · 已进入排期 ${topicMoved} 项`, pct: topicRate, ring: `${topicRate}%`, color: '#8a5a2b', go: 'topics' as NavSection },
+    { label: '交办办结率', value: `${closeRate}%`, tag: dueSoon.length ? `临期 ${dueSoon.length}` : '在办稳定', tone: dueSoon.length || overdue.length ? 'warn' : 'ok', sub: `在办 ${inProgress} · 已关闭 ${actionN.已关闭} · 逾期 ${overdue.length}`, pct: closeRate, ring: `${closeRate}%`, color: '#2f5d4a', go: 'actions' as NavSection },
   ]
 
   return (
     <div>
       <SectionHeader
-        title="总经理办公会管理驾驶舱"
-        subtitle={`${new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })} · 集团总部`}
+        title="会枢驾驶舱"
+        subtitle={`统计周期 2026年1–8月 · 数据截至 ${asOf} · 集团总部`}
       />
 
       <div className="kpi-grid">
         {kpis.map(s => (
-          <div key={s.label} className="kpi-card">
+          <div key={s.label} className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => onNav(s.go)}>
             <ProgressRing pct={s.pct} color={s.color} center={s.ring} />
             <div className="kpi-body">
               <div className="kpi-label">{s.label}</div>
@@ -1379,49 +1464,98 @@ function Dashboard({ onNav }: { onNav: (s: NavSection) => void }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         <Card>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>即将召开 · 8月办公会</div>
-              <div className="meta" style={{ marginTop: 6 }}>
-                <span>2026-08-15 09:00</span>
-                <span>总部大厦28层第一会议室</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span className="kpi-tag is-navy">筹备中</span>
-              <Btn label="进入会议" variant="secondary" small onClick={() => onNav('meetings')} />
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>议题流转</div>
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>申报 {INIT_TOPICS.length} 项</span>
           </div>
-          {INIT_TOPICS.slice(0, 3).map((t, i) => (
-            <div key={t.id} className="dash-item">
-              <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{t.title}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{t.presenter} · {t.estimatedMins} 分钟</div>
-                <div style={{ marginTop: 6 }}><Badge label={t.status} color={topicStatusColor[t.status]} /></div>
+          <div className="funnel">
+            {topicFlow.map((s, i) => (
+              <div key={s.key} className="funnel-col">
+                {i > 0 && <div className="funnel-arrow">→</div>}
+                <div className="funnel-step">
+                  <div className="funnel-n">{s.n}</div>
+                  <div className="funnel-l">{s.key}</div>
+                </div>
               </div>
-            </div>
-          ))}
-          <div style={{ marginTop: 14 }}>
-            <Btn label="进入会中管控" variant="primary" onClick={() => onNav('meeting-live')} />
+            ))}
           </div>
         </Card>
 
         <Card>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>交办事项跟踪</div>
-            <Btn label="全部" variant="ghost" small onClick={() => onNav('actions')} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>交办构成</div>
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>共 {ACTIONS.length} 项</span>
           </div>
-          {ACTIONS.filter(a => a.status !== '已关闭').slice(0, 4).map(a => (
-            <div key={a.id} className="dash-person">
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{a.assignee[0]}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 2 }}>{a.assignee}（{a.dept}）· 截止 {a.deadline}</div>
+          {([
+            ['跟进中', actionN.跟进中, '#1b365d'],
+            ['待确认关闭', actionN.待确认关闭, '#9a7b3a'],
+            ['已关闭', actionN.已关闭, '#2f5d4a'],
+          ] as [string, number, string][]).map(([label, n, color]) => (
+            <div key={label} className="bar-row">
+              <span className="bar-label">{label}</span>
+              <div className="bar-track">
+                <div className="bar-fill" style={{ width: `${(n / actionMax) * 100}%`, background: color }} />
               </div>
-              <Badge label={a.status} color={actionStatusColor[a.status]} />
+              <span className="bar-n">{n}</span>
+            </div>
+          ))}
+        </Card>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 }}>
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>会议汇总</div>
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>按类型统计</span>
+          </div>
+          <table className="rpt-table">
+            <thead>
+              <tr>
+                <th>会议类型</th>
+                <th>场次</th>
+                <th>筹备中</th>
+                <th>已结束</th>
+                <th>纪要已归档</th>
+              </tr>
+            </thead>
+            <tbody>
+              {typeRows.map(r => (
+                <tr key={r.name}>
+                  <td>{r.name}</td>
+                  <td>{r.total}</td>
+                  <td>{r.prep}</td>
+                  <td>{r.done}</td>
+                  <td>{r.archived}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>合计</td>
+                <td>{meetings.length}</td>
+                <td>{meetings.filter(m => m.status === '筹备中').length}</td>
+                <td>{ended.length}</td>
+                <td>{archived.length}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </Card>
+
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>报表提示</div>
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{alerts.length} 条</span>
+          </div>
+          {alerts.length === 0 && <div className="empty">本期无异常项</div>}
+          {alerts.map(a => (
+            <div key={a.id} className="rpt-alert" onClick={() => onNav(a.go)}>
+              <span className="rpt-alert-kind">{a.kind}</span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="rpt-alert-title">{a.title}</div>
+                <div className="rpt-alert-extra">{a.extra}</div>
+              </div>
             </div>
           ))}
         </Card>
@@ -2412,6 +2546,62 @@ interface SupervisionTask {
   checked: boolean
 }
 
+interface MinutesArchive {
+  fileName: string
+  fileSize: string
+  archivedAt: string
+  body: string[]
+  summary: string
+  tasks: SupervisionTask[]
+}
+
+const INIT_MINUTES: Record<string, MinutesArchive> = {
+  'M2026-07': {
+    fileName: '集团2026年7月总经理办公会会议纪要.pdf',
+    fileSize: '1.2 MB',
+    archivedAt: '2026-07-20',
+    body: [
+      '会议时间：2026年7月18日 09:00–11:30。会议地点：总部大厦28层第一会议室。主持人：马总（集团总经理）。出席：马总、李副总（常务）、张副总（运营）、赵国栋、孙丽华。',
+      '一、华东区域销售网络整合。会议听取华东大区赵国栋关于华东五省市销售渠道现状及整合方案的汇报。会议认为，区域渠道分散、品牌形象不统一已制约华东市场协同，原则同意按方案推进整合，统一品牌形象输出，建立区域协调联动机制，10月底前完成落地。责任人：赵国栋；跟进人：张副总（运营）。',
+      '二、供应商资质动态评级体系建设。会议听取采购管理部孙丽华关于供应商全生命周期管理平台建设方案。会议同意立项建设，实现动态评级、预警推送及黑名单管理，9月底前上线运行。责任人：孙丽华；跟进人：李副总（常务）。',
+      '三、其他事项。下次办公会拟安排数字化转型与薪酬改革相关议题，请相关部门提前准备材料。本纪要已于 2026-07-20 归档，督办事项已同步至 TB。',
+    ],
+    summary: '7月总经理办公会由马总主持，5人出席。会议原则通过华东区域销售网络整合方案，要求10月底前完成五省市渠道整合与品牌统一；同意建设供应商资质动态评级体系，9月底前上线。相关督办已交办并同步 TB。',
+    tasks: [
+      { id: 'A001', text: '推进华东区域销售网络整合落地', detail: '按照7月办公会决议，完成华东五省市销售渠道整合，统一品牌形象输出，建立区域协调联动机制。', assignee: '赵国栋 / 华东大区', follower: '张副总（运营）', deadline: '2026-10-31', checked: true },
+      { id: 'A002', text: '完成集团供应商资质动态评级体系建设', detail: '建立供应商全生命周期管理平台，实现动态评级、预警推送及黑名单管理功能。', assignee: '孙丽华 / 采购管理部', follower: '李副总（常务）', deadline: '2026-09-30', checked: true },
+    ],
+  },
+  'M2026-06': {
+    fileName: '2026年6月安全生产专题会会议纪要.docx',
+    fileSize: '860 KB',
+    archivedAt: '2026-06-25',
+    body: [
+      '会议时间：2026年6月20日 14:00–16:30。会议地点：总部大厦28层第一会议室。主持人：李副总（常务）。出席：李副总（常务）、王总助、周建平、孙丽华。',
+      '一、安全生产专项检查通报。安全环保部周建平通报近期专项检查情况，共排查出隐患 37 项，其中 A 级 5 项、B 级 12 项、C 级 20 项。会议要求按分级制定整改计划，逐项销号，8月底前完成。责任人：周建平；跟进人：王总助。',
+      '二、制度与责任。会议强调安全生产党政同责、一岗双责，要求各单位立即组织自查，安全环保部负责督导复查。本纪要已于 2026-06-25 归档，督办事项已同步至 TB。',
+    ],
+    summary: '6月安全生产专题会由李副总主持。会议通报专项检查发现的 37 项隐患，要求按 A/B/C 三级制定整改计划，8月底前完成销号，并由王总助跟进。督办已同步 TB。',
+    tasks: [
+      { id: 'A003', text: '集团安全生产隐患排查整改', detail: '针对安全生产专项检查发现的37项隐患，制定分级整改计划，逐项完成销号。', assignee: '周建平 / 安全环保部', follower: '王总助', deadline: '2026-08-31', checked: true },
+    ],
+  },
+  'M2026-05': {
+    fileName: '2026年5月人才发展专题会会议纪要.pdf',
+    fileSize: '740 KB',
+    archivedAt: '2026-05-18',
+    body: [
+      '会议时间：2026年5月16日 09:30–11:30。会议地点：总部大厦16层党建活动室。主持人：李副总（常务）。出席：李副总（常务）、王芳、王总助。',
+      '一、员工持股计划（ESOP）方案。人力资源部王芳汇报第一期员工持股计划框架，拟覆盖核心骨干约 500 人，总规模不超过净资产的 5%。会议原则同意方案方向，要求完成法律合规审查后按程序提交董事会审议。责任人：王芳；跟进人：李副总（常务）。',
+      '二、后续安排。请人力资源部于 7 月底前完成方案设计、审查及上会准备。本纪要已于 2026-05-18 归档，督办事项已同步至 TB。',
+    ],
+    summary: '5月人才发展专题会由李副总主持。会议原则同意第一期员工持股计划框架，覆盖核心骨干约 500 人、规模不超过净资产 5%，要求完成合规审查后提交董事会。该项督办已关闭。',
+    tasks: [
+      { id: 'A005', text: '员工持股计划（ESOP）方案设计', detail: '制定第一期员工持股计划，覆盖核心骨干约500人，总规模不超过净资产的5%。', assignee: '王芳 / 人力资源部', follower: '李副总（常务）', deadline: '2026-07-31', checked: true },
+    ],
+  },
+}
+
 // ── SupervisionTaskModal ──────────────────────────────────────────────────────
 function SupervisionTaskModal({ task, onClose, onSave, onDelete }: {
   task: SupervisionTask | null
@@ -2459,27 +2649,46 @@ function SupervisionTaskModal({ task, onClose, onSave, onDelete }: {
 }
 
 function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) {
+  const archived = INIT_MINUTES[meeting.id]
   const fileRef = useRef<HTMLInputElement>(null)
-  const [minutesFile, setMinutesFile] = useState<{ name: string; size: string } | null>(null)
-  const [aiState, setAiState] = useState<'idle' | 'parsing' | 'done'>('idle')
-  const [aiSummary, setAiSummary] = useState('')
-  const [tasks, setTasks] = useState<SupervisionTask[]>([])
-  const [taskModal, setTaskModal] = useState<SupervisionTask | null | 'new'>(undefined as unknown as null)
+  const [minutesFile, setMinutesFile] = useState<{ name: string; size: string } | null>(
+    archived ? { name: archived.fileName, size: archived.fileSize } : null
+  )
+  const [aiState, setAiState] = useState<'idle' | 'parsing' | 'done'>(archived ? 'done' : 'idle')
+  const [aiSummary, setAiSummary] = useState(archived?.summary ?? '')
+  const [minutesBody, setMinutesBody] = useState<string[]>(archived?.body ?? [])
+  const [tasks, setTasks] = useState<SupervisionTask[]>(archived?.tasks ?? [])
+  const [isArchive, setIsArchive] = useState(!!archived)
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [editingTask, setEditingTask] = useState<SupervisionTask | null>(null)
-  const [confirmed, setConfirmed] = useState(false)
+  const [confirmed, setConfirmed] = useState(!!archived)
   const [confirming, setConfirming] = useState(false)
   const [toast, setToast] = useState('')
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
 
+  const resetMinutes = () => {
+    setMinutesFile(null)
+    setAiState('idle')
+    setAiSummary('')
+    setMinutesBody([])
+    setTasks([])
+    setConfirmed(false)
+    setIsArchive(false)
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
     setMinutesFile({ name: f.name, size: f.size > 1024 * 1024 ? `${(f.size / 1024 / 1024).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB` })
+    setIsArchive(false)
     setAiState('parsing')
     setConfirmed(false)
     setTimeout(() => {
+      setMinutesBody([
+        `根据上传文件《${f.name}》解析。本次${meeting.title}由${meeting.chair}主持，共${meeting.attendees.length}名人员出席。`,
+        '会议就相关议题进行审议，原则通过所涉事项，要求责任部门按节点推进落实。下次会议将对本次督办事项进行集中汇报。',
+      ])
       setAiSummary(`本次${meeting.title}由${meeting.chair}主持，共${meeting.attendees.length}名人员出席。会议就${meeting.meetingTopics.length}项议题进行审议，形成如下主要决定：一、各项议题所涉事项原则通过，相关责任部门按照会议要求推进落实；二、重点工程项目加快推进节奏，各牵头单位需在规定时间节点前完成阶段性目标；三、下次办公会将对本次督办事项进行集中汇报。`)
       setTasks([
         { id: 'ST1', text: '数字化转型三期项目完成供应商招标文件发布', detail: '按照董事会批复，完成招标文件编制、合规审查并在官网发布，同时在系统完成归档。', assignee: '张慧敏', follower: '王总助', deadline: '2026-09-15', checked: true },
@@ -2505,7 +2714,6 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
 
   return (
     <div>
-      {/* Task modal */}
       {showTaskModal && (
         <SupervisionTaskModal
           task={editingTask}
@@ -2517,9 +2725,13 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
 
       {toast && <div className="toast">{toast}</div>}
 
-      {/* 上传区 */}
       <Card style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif", marginBottom: 12 }}>上传会议纪要</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>{isArchive ? '会议纪要文件' : '上传会议纪要'}</div>
+          {isArchive && archived && (
+            <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>归档于 {archived.archivedAt}</span>
+          )}
+        </div>
         <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
         {!minutesFile ? (
           <DropZone
@@ -2535,14 +2747,33 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
               <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{minutesFile.size}</div>
             </div>
             {aiState === 'parsing' && <div style={{ fontSize: 12, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse-ring 1s infinite' }} />AI 解析中…</div>}
-            {aiState === 'done' && <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>解析完成</span>}
-            <button onClick={() => { setMinutesFile(null); setAiState('idle'); setAiSummary(''); setTasks([]); setConfirmed(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 16 }}>×</button>
+            {aiState === 'done' && !isArchive && <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>解析完成</span>}
+            {isArchive && <Badge label="已归档" color="bg-emerald-50 text-emerald-700 border border-emerald-200" />}
+            {isArchive ? (
+              <Btn label="重新上传" variant="ghost" small onClick={() => fileRef.current?.click()} />
+            ) : (
+              <button onClick={resetMinutes} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 16 }}>×</button>
+            )}
           </div>
         )}
       </Card>
 
       {aiState === 'done' && (
         <>
+          {minutesBody.length > 0 && (
+            <Card style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>纪要正文</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>{isArchive ? '历史归档全文' : '根据上传文件整理'}</div>
+              </div>
+              <div style={{ background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 7, padding: '14px 16px' }}>
+                {minutesBody.map((p, i) => (
+                  <p key={i} style={{ fontSize: 13, color: '#374151', lineHeight: 1.85, margin: i === 0 ? 0 : '12px 0 0' }}>{p}</p>
+                ))}
+              </div>
+            </Card>
+          )}
+
           <Card style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>AI 智能摘要</div>
@@ -2557,7 +2788,7 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>督办事项清单</div>
-                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>AI 自动提取 · 可修改、新增后确认提交至 TB</div>
+                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{isArchive ? '来自纪要决议 · 已进入交办跟踪' : 'AI 自动提取 · 可修改、新增后确认提交至 TB'}</div>
               </div>
               {!confirmed && <Btn label="+ 新增事项" variant="ghost" small onClick={() => { setEditingTask(null); setShowTaskModal(true) }} />}
             </div>
@@ -2610,13 +2841,19 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
 }
 
 function MinutesView() {
-  const meetings = INIT_MEETINGS.filter(m => m.status === '已结束')
+  const meetings = INIT_MEETINGS.filter(m => m.status === '已结束').sort((a, b) => {
+    const aDone = INIT_MINUTES[a.id] ? 1 : 0
+    const bDone = INIT_MINUTES[b.id] ? 1 : 0
+    if (aDone !== bDone) return aDone - bDone
+    return b.date.localeCompare(a.date)
+  })
   const [selectedId, setSelectedId] = useState<string>(meetings[0]?.id ?? '')
   const selected = meetings.find(m => m.id === selectedId) ?? meetings[0]
+  const selectedArchived = selected ? INIT_MINUTES[selected.id] : undefined
 
   return (
     <div>
-      <SectionHeader title="会议纪要" subtitle="仅已结束的会议可上传纪要 · AI 自动提取摘要和督办事项 · 确认后同步至 TB" />
+      <SectionHeader title="会议纪要" subtitle="已结束会议的历史纪要在此查阅 · 待上传的可由 AI 提取摘要和督办事项 · 确认后同步至 TB" />
 
       {meetings.length === 0 && (
         <div className="empty">
@@ -2630,14 +2867,22 @@ function MinutesView() {
 
         {/* Left: meeting list */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--muted-foreground)', letterSpacing: '0.04em' }}>已结束会议</div>
-          {meetings.map(m => (
-            <div key={m.id} onClick={() => setSelectedId(m.id)} style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', background: selectedId === m.id ? 'var(--secondary)' : 'transparent', borderLeft: selectedId === m.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'all 0.15s' }}>
-              <div style={{ fontSize: 13, fontWeight: selectedId === m.id ? 600 : 400, color: selectedId === m.id ? 'var(--primary)' : 'var(--foreground)', marginBottom: 3, lineHeight: 1.4 }}>{m.title}</div>
-              <div style={{ fontSize: 11, color: '#9ca3af' }}>{m.date} · {m.location.slice(0, 10)}</div>
-              <div style={{ marginTop: 5 }}><Badge label={m.status} color="bg-emerald-50 text-emerald-700 border border-emerald-200" /></div>
-            </div>
-          ))}
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--muted-foreground)', letterSpacing: '0.04em' }}>历史会议</div>
+          {meetings.map(m => {
+            const archived = INIT_MINUTES[m.id]
+            return (
+              <div key={m.id} onClick={() => setSelectedId(m.id)} style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', background: selectedId === m.id ? 'var(--secondary)' : 'transparent', borderLeft: selectedId === m.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'all 0.15s' }}>
+                <div style={{ fontSize: 13, fontWeight: selectedId === m.id ? 600 : 400, color: selectedId === m.id ? 'var(--primary)' : 'var(--foreground)', marginBottom: 3, lineHeight: 1.4 }}>{m.title}</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>{m.date} · {m.location.slice(0, 10)}</div>
+                <div style={{ marginTop: 5 }}>
+                  <Badge
+                    label={archived ? '纪要已归档' : '待上传纪要'}
+                    color={archived ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}
+                  />
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         {/* Right: minutes panel */}
@@ -2649,7 +2894,10 @@ function MinutesView() {
                   <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>{selected.title}</div>
                   <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{selected.date} {selected.time}–{selected.endTime} · {selected.location} · 主持：{selected.chair}</div>
                 </div>
-                <Badge label={selected.status} color={selected.status === '已结束' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'} />
+                <Badge
+                  label={selectedArchived ? '纪要已归档' : selected.status}
+                  color={selectedArchived || selected.status === '已结束' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}
+                />
               </div>
               <MeetingMinutesPanel key={selected.id} meeting={selected} />
             </>
@@ -2982,8 +3230,8 @@ export default function App() {
               <IconLogo c="#12203a" />
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f1ea', lineHeight: 1.25, letterSpacing: '0.04em', fontFamily: "'Noto Serif SC', serif" }}>总经理办公会</div>
-              <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.45)', marginTop: 3 }}>全流程闭环管理</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f1ea', lineHeight: 1.25, letterSpacing: '0.04em', fontFamily: "'Noto Serif SC', serif" }}>会枢</div>
+              <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.45)', marginTop: 3 }}>议而有决 · 决而有行</div>
             </div>
           </div>
         </div>
@@ -3041,7 +3289,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 12px', background: 'var(--secondary)', borderRadius: 6, fontSize: 12, color: 'var(--primary)' }}>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.4"/><path d="M6 3.5v3l1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              下次会议 <strong>2026-08-15</strong>（距今 5 天）
+              待关注 <strong>纪要未归档 1</strong> · 交办临期 1
             </div>
             <div style={{ position: 'relative', cursor: 'pointer', width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
               <IconBell c="#6b7380" />
