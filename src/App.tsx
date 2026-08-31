@@ -38,6 +38,22 @@ interface Topic {
   attendDepts?: string
   attendEnterprises?: string
   notes?: string
+  outcomes?: TopicOutcome[]
+}
+
+interface TopicOutcome {
+  meetingId: string
+  meetingTitle: string
+  meetingDate: string
+  conclusion: string
+  minutesFileName: string
+  minutesFileSize?: string
+}
+
+interface TopicConclusion {
+  topicId: string
+  title: string
+  conclusion: string
 }
 
 interface MeetingTopic {
@@ -203,6 +219,102 @@ const INIT_TOPICS: Topic[] = [
     presenter: '刘明', estimatedMins: 10,
     materials: ['合规年度评估报告.pdf'],
     targetMeetings: ['广汽集团总经理办公会', '广汽集团党委会'],
+    outcomes: [{
+      meetingId: 'M2026-07',
+      meetingTitle: '集团2026年7月总经理办公会',
+      meetingDate: '2026-07-18',
+      conclusion: '会议确认年度合规评估结论良好，原则通过报告。下年度工作重点转向数字合规与制度穿透，由合规法务部牵头落实。',
+      minutesFileName: '集团2026年7月总经理办公会会议纪要.pdf',
+      minutesFileSize: '1.2 MB',
+    }],
+  },
+  {
+    id: 'T006',
+    title: '华东区域销售网络整合',
+    submitter: '赵国栋', dept: '华东大区', submittedAt: '2026-07-02',
+    status: '已上会', priority: '高',
+    background: '华东五省市销售渠道分散、品牌形象不统一，已制约区域协同。',
+    objective: '审议华东销售网络整合方案，明确落地时限与责任人。',
+    aiSummary: '汇报华东五省市渠道现状及整合方案，申请统一品牌形象并建立区域协调联动机制。',
+    decisionPoints: ['整合方案审批', '落地时限确认'],
+    presenter: '赵国栋', estimatedMins: 20,
+    materials: ['华东渠道整合方案.pdf'],
+    targetMeetings: ['广汽集团总经理办公会'],
+    urgency: '急',
+    outcomes: [{
+      meetingId: 'M2026-07',
+      meetingTitle: '集团2026年7月总经理办公会',
+      meetingDate: '2026-07-18',
+      conclusion: '会议原则同意按方案推进华东五省市销售渠道整合，统一品牌形象输出，建立区域协调联动机制，10月底前完成落地。',
+      minutesFileName: '集团2026年7月总经理办公会会议纪要.pdf',
+      minutesFileSize: '1.2 MB',
+    }],
+  },
+  {
+    id: 'T007',
+    title: '供应商资质动态评级体系建设',
+    submitter: '孙丽华', dept: '采购管理部', submittedAt: '2026-07-03',
+    status: '已上会', priority: '中',
+    background: '供应商管理仍以静态名录为主，缺少动态评级与预警。',
+    objective: '立项建设供应商全生命周期管理平台。',
+    aiSummary: '申请建设供应商动态评级、预警推送及黑名单管理平台。',
+    decisionPoints: ['平台立项审批'],
+    presenter: '孙丽华', estimatedMins: 15,
+    materials: ['供应商评级平台方案.pdf'],
+    targetMeetings: ['广汽集团总经理办公会'],
+    urgency: '一般',
+    outcomes: [{
+      meetingId: 'M2026-07',
+      meetingTitle: '集团2026年7月总经理办公会',
+      meetingDate: '2026-07-18',
+      conclusion: '会议同意立项建设供应商全生命周期管理平台，实现动态评级、预警推送及黑名单管理，9月底前上线运行。',
+      minutesFileName: '集团2026年7月总经理办公会会议纪要.pdf',
+      minutesFileSize: '1.2 MB',
+    }],
+  },
+  {
+    id: 'T008',
+    title: '安全生产专项检查隐患整改',
+    submitter: '周建平', dept: '安全环保部', submittedAt: '2026-06-08',
+    status: '已上会', priority: '高',
+    background: '专项检查排查出隐患 37 项，需分级整改销号。',
+    objective: '确认隐患分级整改计划与完成时限。',
+    aiSummary: '通报专项检查 37 项隐患，申请按 A/B/C 三级制定整改计划。',
+    decisionPoints: ['整改计划与时限审批'],
+    presenter: '周建平', estimatedMins: 20,
+    materials: ['安全生产专项检查通报.pdf'],
+    targetMeetings: ['广州工业集团专题会'],
+    urgency: '紧急',
+    outcomes: [{
+      meetingId: 'M2026-06',
+      meetingTitle: '2026年6月安全生产专题会',
+      meetingDate: '2026-06-20',
+      conclusion: '会议要求按 A/B/C 三级制定整改计划，逐项销号，8月底前完成；各单位立即组织自查，安全环保部负责督导复查。',
+      minutesFileName: '2026年6月安全生产专题会会议纪要.docx',
+      minutesFileSize: '860 KB',
+    }],
+  },
+  {
+    id: 'T009',
+    title: '员工持股计划（ESOP）方案',
+    submitter: '王芳', dept: '人力资源部', submittedAt: '2026-05-06',
+    status: '已上会', priority: '中',
+    background: '拟覆盖核心骨干约 500 人，总规模不超过净资产的 5%。',
+    objective: '原则同意方案方向，明确后续上会路径。',
+    aiSummary: '汇报第一期员工持股计划框架，申请明确覆盖范围与规模上限。',
+    decisionPoints: ['方案方向确认'],
+    presenter: '王芳', estimatedMins: 15,
+    materials: ['ESOP方案框架.pdf'],
+    targetMeetings: ['广州工业集团专题会'],
+    urgency: '急',
+    outcomes: [{
+      meetingId: 'M2026-05',
+      meetingTitle: '2026年5月人才发展专题会',
+      meetingDate: '2026-05-16',
+      conclusion: '会议原则同意第一期员工持股计划框架，覆盖核心骨干约 500 人、规模不超过净资产 5%，要求完成法律合规审查后按程序提交董事会审议。',
+      minutesFileName: '2026年5月人才发展专题会会议纪要.pdf',
+      minutesFileSize: '740 KB',
+    }],
   },
 ]
 
@@ -242,7 +354,11 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦28层第一会议室',
     chair: '马总（集团总经理）',
     attendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '赵国栋', '孙丽华'],
-    meetingTopics: [],
+    meetingTopics: [
+      { topicId: 'T006', order: 1 },
+      { topicId: 'T007', order: 2 },
+      { topicId: 'T005', order: 3 },
+    ],
     status: '已结束',
     notes: '会议纪要已归档',
   },
@@ -254,7 +370,7 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦28层第一会议室',
     chair: '李副总（常务）',
     attendees: ['李副总（常务）', '王总助', '周建平', '孙丽华'],
-    meetingTopics: [],
+    meetingTopics: [{ topicId: 'T008', order: 1 }],
     status: '已结束',
     notes: '会议纪要已归档',
   },
@@ -266,7 +382,7 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦16层党建活动室',
     chair: '李副总（常务）',
     attendees: ['李副总（常务）', '王芳', '王总助'],
-    meetingTopics: [],
+    meetingTopics: [{ topicId: 'T009', order: 1 }],
     status: '已结束',
     notes: '会议纪要已归档',
   },
@@ -829,9 +945,10 @@ function NotifyModal({ meeting, onClose, onSend }: {
 
 // ─── Meeting Detail View ──────────────────────────────────────────────────────
 
-function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
+function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: {
   meeting: Meeting
   topics: Topic[]
+  setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
   onBack: () => void
   onUpdate: (m: Meeting) => void
   onNav: (s: NavSection) => void
@@ -839,6 +956,7 @@ function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
   const [showPicker, setShowPicker] = useState(false)
   const [actionToast, setActionToast] = useState('')
   const [showNotifyModal, setShowNotifyModal] = useState(false)
+  const [detailTopic, setDetailTopic] = useState<Topic | null>(null)
   const meetingTopics = [...meeting.meetingTopics].sort((a, b) => a.order - b.order)
 
   const fireToast = (msg: string) => { setActionToast(msg); setTimeout(() => setActionToast(''), 3200) }
@@ -912,6 +1030,14 @@ function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
         />
       )}
 
+      {detailTopic && (
+        <TopicFormModal
+          topic={topics.find(t => t.id === detailTopic.id) ?? detailTopic}
+          onClose={() => setDetailTopic(null)}
+          onSave={saved => setTopics(prev => prev.map(t => t.id === saved.id ? saved : t))}
+        />
+      )}
+
       {/* ── 发送会议通知 Modal ── */}
       {showNotifyModal && (
         <NotifyModal
@@ -980,7 +1106,7 @@ function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
                 const topicStart = elapsed
                 elapsed += mins
                 return (
-                  <div key={mt.topicId} style={{ borderBottom: idx < meetingTopics.length - 1 ? '1px solid var(--border)' : 'none', padding: '16px 20px' }}>
+                  <div key={mt.topicId} style={{ borderBottom: idx < meetingTopics.length - 1 ? '1px solid var(--border)' : 'none', padding: '16px 20px', cursor: 'pointer' }} onClick={() => setDetailTopic(t)}>
                     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                       {/* Order badge */}
                       <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
@@ -1005,8 +1131,11 @@ function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
                         </div>
                         {/* AI summary collapsed */}
                         <div style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {t.aiSummary}
+                          {t.outcomes?.[0]?.conclusion || t.aiSummary}
                         </div>
+                        {t.outcomes?.[0] && (
+                          <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 6 }}>点击查看审议结论与对应纪要</div>
+                        )}
                       </div>
 
                       {/* Mins editor */}
@@ -1017,6 +1146,7 @@ function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
                             min={5}
                             max={120}
                             value={mins}
+                            onClick={e => e.stopPropagation()}
                             onChange={e => updateMins(mt.topicId, Number(e.target.value))}
                             disabled={meeting.status !== '筹备中'}
                             style={{ width: 54, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center', fontWeight: 600, color: 'var(--foreground)', background: '#fafbfd' }}
@@ -1027,7 +1157,7 @@ function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
 
                       {/* Controls */}
                       {meeting.status === '筹备中' && (
-                        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }} onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => moveUp(idx)}
                             disabled={idx === 0}
@@ -1276,7 +1406,7 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onNew, on
   )
 }
 
-function MeetingsView({ topics, onNav }: { topics: Topic[]; onNav: (s: NavSection) => void }) {
+function MeetingsView({ topics, setTopics, onNav }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>>; onNav: (s: NavSection) => void }) {
   const [meetings, setMeetings] = useState<Meeting[]>(INIT_MEETINGS)
   const [showNew, setShowNew] = useState(false)
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
@@ -1291,6 +1421,7 @@ function MeetingsView({ topics, onNav }: { topics: Topic[]; onNav: (s: NavSectio
       <MeetingDetail
         meeting={detailMeeting}
         topics={topics}
+        setTopics={setTopics}
         onBack={() => setDetailId(null)}
         onUpdate={updateMeeting}
         onNav={onNav}
@@ -2041,6 +2172,7 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
       attendDepts: form.attendDepts,
       attendEnterprises: form.attendEnterprises,
       notes: form.notes,
+      outcomes: topic?.outcomes,
     }
     onSave(saved)
     onClose()
@@ -2223,6 +2355,33 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
         </Field>
       )}
 
+      {!isCreate && (topic.outcomes?.length ?? 0) > 0 && (
+        <>
+          <Field label="审议结论">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {topic.outcomes!.map(o => (
+                <div key={o.meetingId} style={{ background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 6 }}>{o.meetingTitle} · {o.meetingDate}</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.75, color: '#374151' }}>{o.conclusion}</div>
+                </div>
+              ))}
+            </div>
+          </Field>
+          <Field label="对应会议纪要">
+            {topic.outcomes!.map(o => (
+              <div key={o.meetingId} className="file-row">
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', width: 36 }}>DOC</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.minutesFileName}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{o.meetingTitle}{o.minutesFileSize ? ` · ${o.minutesFileSize}` : ''}</div>
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--primary)' }}>查阅</span>
+              </div>
+            ))}
+          </Field>
+        </>
+      )}
+
       {!isCreate && (
         <div style={{ fontSize: 12, color: 'var(--muted-foreground)', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <span>编号 {topic.id}</span>
@@ -2325,7 +2484,9 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
                   <td style={{ padding: '12px 14px', fontSize: 12, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{t.id}</td>
                   <td style={{ padding: '12px 14px', maxWidth: 260 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.targetMeetings?.join('、') || t.notes || t.background?.slice(0, 60)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t.outcomes?.[0] ? `结论：${t.outcomes[0].conclusion}` : (t.targetMeetings?.join('、') || t.notes || t.background?.slice(0, 60))}
+                    </div>
                   </td>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--muted-foreground)' }}>{t.dept}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13 }}>{t.submitter}</td>
@@ -2578,6 +2739,7 @@ interface MinutesArchive {
   body: string[]
   summary: string
   tasks: SupervisionTask[]
+  conclusions: TopicConclusion[]
 }
 
 const INIT_MINUTES: Record<string, MinutesArchive> = {
@@ -2592,6 +2754,11 @@ const INIT_MINUTES: Record<string, MinutesArchive> = {
       '三、其他事项。下次办公会拟安排数字化转型与薪酬改革相关议题，请相关部门提前准备材料。本纪要已于 2026-07-20 归档，督办事项已同步至 TB。',
     ],
     summary: '7月总经理办公会由马总主持，5人出席。会议原则通过华东区域销售网络整合方案，要求10月底前完成五省市渠道整合与品牌统一；同意建设供应商资质动态评级体系，9月底前上线。相关督办已交办并同步 TB。',
+    conclusions: [
+      { topicId: 'T006', title: '华东区域销售网络整合', conclusion: '会议原则同意按方案推进华东五省市销售渠道整合，统一品牌形象输出，建立区域协调联动机制，10月底前完成落地。' },
+      { topicId: 'T007', title: '供应商资质动态评级体系建设', conclusion: '会议同意立项建设供应商全生命周期管理平台，实现动态评级、预警推送及黑名单管理，9月底前上线运行。' },
+      { topicId: 'T005', title: '集团合规管理体系年度评估报告', conclusion: '会议确认年度合规评估结论良好，原则通过报告。下年度工作重点转向数字合规与制度穿透，由合规法务部牵头落实。' },
+    ],
     tasks: [
       { id: 'A001', text: '推进华东区域销售网络整合落地', detail: '按照7月办公会决议，完成华东五省市销售渠道整合，统一品牌形象输出，建立区域协调联动机制。', assignee: '赵国栋 / 华东大区', follower: '张副总（运营）', deadline: '2026-10-31', checked: true },
       { id: 'A002', text: '完成集团供应商资质动态评级体系建设', detail: '建立供应商全生命周期管理平台，实现动态评级、预警推送及黑名单管理功能。', assignee: '孙丽华 / 采购管理部', follower: '李副总（常务）', deadline: '2026-09-30', checked: true },
@@ -2607,6 +2774,9 @@ const INIT_MINUTES: Record<string, MinutesArchive> = {
       '二、制度与责任。会议强调安全生产党政同责、一岗双责，要求各单位立即组织自查，安全环保部负责督导复查。本纪要已于 2026-06-25 归档，督办事项已同步至 TB。',
     ],
     summary: '6月安全生产专题会由李副总主持。会议通报专项检查发现的 37 项隐患，要求按 A/B/C 三级制定整改计划，8月底前完成销号，并由王总助跟进。督办已同步 TB。',
+    conclusions: [
+      { topicId: 'T008', title: '安全生产专项检查隐患整改', conclusion: '会议要求按 A/B/C 三级制定整改计划，逐项销号，8月底前完成；各单位立即组织自查，安全环保部负责督导复查。' },
+    ],
     tasks: [
       { id: 'A003', text: '集团安全生产隐患排查整改', detail: '针对安全生产专项检查发现的37项隐患，制定分级整改计划，逐项完成销号。', assignee: '周建平 / 安全环保部', follower: '王总助', deadline: '2026-08-31', checked: true },
     ],
@@ -2621,10 +2791,58 @@ const INIT_MINUTES: Record<string, MinutesArchive> = {
       '二、后续安排。请人力资源部于 7 月底前完成方案设计、审查及上会准备。本纪要已于 2026-05-18 归档，督办事项已同步至 TB。',
     ],
     summary: '5月人才发展专题会由李副总主持。会议原则同意第一期员工持股计划框架，覆盖核心骨干约 500 人、规模不超过净资产 5%，要求完成合规审查后提交董事会。该项督办已关闭。',
+    conclusions: [
+      { topicId: 'T009', title: '员工持股计划（ESOP）方案', conclusion: '会议原则同意第一期员工持股计划框架，覆盖核心骨干约 500 人、规模不超过净资产 5%，要求完成法律合规审查后按程序提交董事会审议。' },
+    ],
     tasks: [
       { id: 'A005', text: '员工持股计划（ESOP）方案设计', detail: '制定第一期员工持股计划，覆盖核心骨干约500人，总规模不超过净资产的5%。', assignee: '王芳 / 人力资源部', follower: '李副总（常务）', deadline: '2026-07-31', checked: true },
     ],
   },
+}
+
+function mergeTopicOutcomes(
+  topics: Topic[],
+  meeting: Meeting,
+  file: { name: string; size: string },
+  conclusions: TopicConclusion[],
+): Topic[] {
+  return topics.map(t => {
+    const hit = conclusions.find(c => c.topicId === t.id)
+    if (!hit) return t
+    const outcome: TopicOutcome = {
+      meetingId: meeting.id,
+      meetingTitle: meeting.title,
+      meetingDate: meeting.date,
+      conclusion: hit.conclusion,
+      minutesFileName: file.name,
+      minutesFileSize: file.size,
+    }
+    return {
+      ...t,
+      outcomes: [...(t.outcomes ?? []).filter(o => o.meetingId !== meeting.id), outcome],
+    }
+  })
+}
+
+function buildParsedConclusions(meeting: Meeting, topics: Topic[]): TopicConclusion[] {
+  const list = [...meeting.meetingTopics]
+    .sort((a, b) => a.order - b.order)
+    .map(mt => topics.find(t => t.id === mt.topicId))
+    .filter(Boolean) as Topic[]
+  if (list.length === 0) {
+    return [{
+      topicId: '',
+      title: meeting.title,
+      conclusion: `会议就本次安排形成原则意见，具体议题结论请对照纪要原文核改后回写。`,
+    }]
+  }
+  return list.map(t => ({
+    topicId: t.id,
+    title: t.title,
+    conclusion: t.id === 'T002'
+      ? '会议原则同意数字化转型三期立项方向，要求信息技术部完善招标文件与项目管理委员会组建方案，加快推进供应商招标，并按节点向后续会议通报进展。'
+      : `会议就「${t.title}」进行审议，原则通过相关安排。${t.objective ? t.objective : ''}请责任部门按会议要求落实，并在下次会议通报进展。`,
+  }))
 }
 
 // ── SupervisionTaskModal ──────────────────────────────────────────────────────
@@ -2820,7 +3038,11 @@ function downloadBlob(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) {
+function MeetingMinutesPanel({ meeting, topics, setTopics }: {
+  meeting: Meeting
+  topics: Topic[]
+  setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
+}) {
   const archived = INIT_MINUTES[meeting.id]
   const fileRef = useRef<HTMLInputElement>(null)
   const [minutesFile, setMinutesFile] = useState<{ name: string; size: string } | null>(
@@ -2837,6 +3059,7 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
   const [toast, setToast] = useState('')
   const [draftState, setDraftState] = useState<'idle' | 'generating' | 'ready'>('idle')
   const [draftFile, setDraftFile] = useState<{ name: string; size: string; blob: Blob } | null>(null)
+  const [conclusions, setConclusions] = useState<TopicConclusion[]>(archived?.conclusions ?? [])
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
 
@@ -2853,13 +3076,22 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
     }, 1800)
   }
 
+  const writeOutcomes = (file: { name: string; size: string }, list: TopicConclusion[]) => {
+    setTopics(prev => mergeTopicOutcomes(prev, meeting, file, list))
+  }
+
   const resetMinutes = () => {
     setMinutesFile(null)
     setAiState('idle')
     setAiSummary('')
     setTasks([])
+    setConclusions([])
     setConfirmed(false)
     setIsArchive(false)
+    setTopics(prev => prev.map(t => ({
+      ...t,
+      outcomes: (t.outcomes ?? []).filter(o => o.meetingId !== meeting.id),
+    })))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2870,6 +3102,10 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
     setAiState('parsing')
     setConfirmed(false)
     setTimeout(() => {
+      const parsed = buildParsedConclusions(meeting, topics)
+      const fileMeta = { name: f.name, size: f.size > 1024 * 1024 ? `${(f.size / 1024 / 1024).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB` }
+      setConclusions(parsed)
+      writeOutcomes(fileMeta, parsed)
       setAiSummary(`本次${meeting.title}由${meeting.chair}主持，共${meeting.attendees.length}名人员出席。会议就${meeting.meetingTopics.length}项议题进行审议，形成如下主要决定：一、各项议题所涉事项原则通过，相关责任部门按照会议要求推进落实；二、重点工程项目加快推进节奏，各牵头单位需在规定时间节点前完成阶段性目标；三、下次办公会将对本次督办事项进行集中汇报。`)
       setTasks([
         { id: 'ST1', text: '数字化转型三期项目完成供应商招标文件发布', detail: '按照董事会批复，完成招标文件编制、合规审查并在官网发布，同时在系统完成归档。', assignee: '张慧敏', follower: '王总助', deadline: '2026-09-15', checked: true },
@@ -2890,7 +3126,12 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
 
   const handleConfirm = () => {
     setConfirming(true)
-    setTimeout(() => { setConfirming(false); setConfirmed(true); showToast(`已确认 ${tasks.filter(t => t.checked).length} 条督办事项，已同步至 TB 项目任务`) }, 1600)
+    setTimeout(() => {
+      if (minutesFile) writeOutcomes(minutesFile, conclusions)
+      setConfirming(false)
+      setConfirmed(true)
+      showToast(`已确认 ${tasks.filter(t => t.checked).length} 条督办、${conclusions.length} 条议题结论，督办已同步至 TB`)
+    }, 1600)
   }
 
   return (
@@ -2954,13 +3195,13 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
         </div>
         <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
         {!isArchive && draftState !== 'ready' && !minutesFile && (
-          <div className="field-note">请先生成 Word 初版并在本地核改，再导入终版。导入后系统将解析摘要并生成交办事项。</div>
+          <div className="field-note">请先生成 Word 初版并在本地核改，再导入终版。导入后系统将解析摘要、议题结论并生成交办事项。</div>
         )}
         {!minutesFile ? (
           (isArchive || draftState === 'ready') ? (
           <DropZone
             title="点击导入终版会议纪要"
-            hint="支持 PDF · Word · TXT，上传后 AI 自动解析摘要和督办事项"
+            hint="支持 PDF · Word · TXT，上传后 AI 自动解析摘要、议题结论和督办事项"
             onClick={() => fileRef.current?.click()}
           />
           ) : null
@@ -2994,6 +3235,23 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
               {aiSummary}
             </div>
           </Card>
+
+          {conclusions.length > 0 && (
+            <Card style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>议题结论</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>{isArchive ? '已回写至对应议题' : '解析后写入议题详情，可与纪要一并查阅'}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {conclusions.map((c, i) => (
+                  <div key={c.topicId || i} style={{ background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 7, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{i + 1}. {c.title}</div>
+                    <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.75 }}>{c.conclusion}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -3051,7 +3309,7 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
   )
 }
 
-function MinutesView() {
+function MinutesView({ topics, setTopics }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>> }) {
   const meetings = INIT_MEETINGS.filter(m => m.status === '已结束').sort((a, b) => {
     const aDone = INIT_MINUTES[a.id] ? 1 : 0
     const bDone = INIT_MINUTES[b.id] ? 1 : 0
@@ -3064,7 +3322,7 @@ function MinutesView() {
 
   return (
     <div>
-      <SectionHeader title="会议纪要" subtitle="先生成 Word 初版并本地核改，再导入终版解析摘要与督办事项 · 已归档纪要可直接查阅" />
+      <SectionHeader title="会议纪要" subtitle="先生成 Word 初版并本地核改，再导入终版解析摘要、议题结论与督办事项 · 已归档纪要可直接查阅" />
 
       {meetings.length === 0 && (
         <div className="empty">
@@ -3110,7 +3368,7 @@ function MinutesView() {
                   color={selectedArchived || selected.status === '已结束' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}
                 />
               </div>
-              <MeetingMinutesPanel key={selected.id} meeting={selected} />
+              <MeetingMinutesPanel key={selected.id} meeting={selected} topics={topics} setTopics={setTopics} />
             </>
           )}
         </div>
@@ -3512,9 +3770,9 @@ export default function App() {
         <main style={{ flex: 1, padding: '28px 32px' }}>
           {activeSection === 'dashboard' && <Dashboard onNav={setActiveSection} topics={topics} />}
           {activeSection === 'topics' && <TopicsView topics={topics} setTopics={setTopics} />}
-          {activeSection === 'meetings' && <MeetingsView topics={topics} onNav={setActiveSection} />}
+          {activeSection === 'meetings' && <MeetingsView topics={topics} setTopics={setTopics} onNav={setActiveSection} />}
           {activeSection === 'meeting-live' && <MeetingLive />}
-          {activeSection === 'minutes' && <MinutesView />}
+          {activeSection === 'minutes' && <MinutesView topics={topics} setTopics={setTopics} />}
           {activeSection === 'actions' && <ActionsView />}
         </main>
       </div>
