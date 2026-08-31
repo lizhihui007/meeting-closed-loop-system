@@ -30,6 +30,14 @@ interface Topic {
   presenter: string
   estimatedMins: number
   materials: string[]
+  isTradeSecret?: boolean
+  isMajorDecision?: boolean
+  urgency?: '紧急' | '急' | '一般'
+  targetMeetings?: string[]
+  preBrief?: { leader: boolean; gm: boolean; chairman: boolean }
+  attendDepts?: string
+  attendEnterprises?: string
+  notes?: string
 }
 
 interface MeetingTopic {
@@ -71,15 +79,19 @@ interface ActionItem {
 // ─── Meeting Types ────────────────────────────────────────────────────────────
 
 const MEETING_TYPES = [
-  { id: 'gm-office',    name: '总经理办公会',   desc: '集团总经理主持的综合性决策会议', color: '#1b365d', bg: '#eef2f6' },
-  { id: 'party',        name: '党委会',         desc: '党委书记主持的党务决策会议',     color: '#8b3a3a', bg: '#f6eeee' },
-  { id: 'board',        name: '董事会',         desc: '董事会成员参与的公司治理会议',   color: '#3d4a6b', bg: '#eef0f4' },
-  { id: 'special',      name: '专题会议',       desc: '针对特定议题召开的专项研究会议', color: '#2c5f6e', bg: '#eef4f5' },
-  { id: 'ops-review',   name: '经营分析会',     desc: '定期经营数据分析与研判会议',     color: '#2f5d4a', bg: '#eef4f1' },
-  { id: 'coordination', name: '协调推进会',     desc: '跨部门重点项目协调推进会议',     color: '#8a5a2b', bg: '#f5f0ea' },
-  { id: 'committee',    name: '专业委员会',     desc: '各专业委员会审议会议',           color: '#8a7340', bg: '#f4f0e6' },
-  { id: 'other',        name: '其他集团级会议', desc: '其他有集团领导参加的会议',       color: '#5c6578', bg: '#f1f3f5' },
+  { id: 'gz-industry-special', name: '广州工业集团专题会',       desc: '广州工业集团专项研究会议',           color: '#2c5f6e', bg: '#eef4f5' },
+  { id: 'gac-gm-office',       name: '广汽集团总经理办公会',     desc: '广汽集团总经理主持的综合性决策会议', color: '#1b365d', bg: '#eef2f6' },
+  { id: 'gac-industry-party',  name: '广汽工业集团党委会',       desc: '广汽工业集团党委决策会议',           color: '#8b3a3a', bg: '#f6eeee' },
+  { id: 'gac-party',           name: '广汽集团党委会',           desc: '广汽集团党委决策会议',               color: '#6b2e2e', bg: '#f8eeee' },
+  { id: 'gac-industry-board',  name: '广汽集团工业集团董事会',   desc: '广汽工业集团董事会会议',             color: '#3d4a6b', bg: '#eef0f4' },
+  { id: 'gac-board',           name: '广汽集团董事会',           desc: '广汽集团董事会会议',                 color: '#2a3558', bg: '#eef0f4' },
 ]
+
+const TARGET_MEETINGS = MEETING_TYPES.map(t => t.name)
+
+function meetingTypeName(typeId: string) {
+  return MEETING_TYPES.find(t => t.id === typeId)?.name ?? typeId
+}
 
 // ─── Attendee Groups ──────────────────────────────────────────────────────────
 
@@ -95,31 +107,31 @@ const INIT_ATTENDEE_GROUPS: AttendeeGroup[] = [
   {
     id: 'AG001', name: '总经理办公会常规组',
     desc: '适用于总经理办公会、专题会议',
-    typeIds: ['gm-office', 'special'],
+    typeIds: ['gac-gm-office', 'gz-industry-special'],
     members: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '王总助', '各部门主要负责人'],
   },
   {
     id: 'AG002', name: '党委会核心成员组',
     desc: '适用于党委会',
-    typeIds: ['party'],
+    typeIds: ['gac-industry-party', 'gac-party'],
     members: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长'],
   },
   {
     id: 'AG003', name: '董事会成员组',
     desc: '适用于董事会',
-    typeIds: ['board'],
+    typeIds: ['gac-industry-board', 'gac-board'],
     members: ['马总（董事长）', '李总（执行董事）', '张董事', '王独立董事', '陈独立董事', '董事会秘书'],
   },
   {
     id: 'AG004', name: '经营分析会核心组',
     desc: '适用于经营分析会',
-    typeIds: ['ops-review'],
+    typeIds: ['gac-gm-office'],
     members: ['马总（集团总经理）', '李副总（常务）', '财务部长', '战略部长', '各业务板块负责人'],
   },
   {
     id: 'AG005', name: '协调推进会工作组',
     desc: '适用于跨部门协调推进会',
-    typeIds: ['coordination'],
+    typeIds: ['gz-industry-special'],
     members: ['分管副总', '项目负责人', '相关部门负责人', '办公室主任'],
   },
 ]
@@ -138,6 +150,7 @@ const INIT_TOPICS: Topic[] = [
     decisionPoints: ['是否批准四季度新市场开拓预算（3.5亿元）', '华北区业务整合方案审批', '年度KPI动态调整授权'],
     presenter: '李建国', estimatedMins: 25,
     materials: ['三季度业绩报告.pdf', '四季度策略PPT.pptx'],
+    targetMeetings: ['广汽集团总经理办公会'],
   },
   {
     id: 'T002',
@@ -150,6 +163,7 @@ const INIT_TOPICS: Topic[] = [
     decisionPoints: ['立项审批（1.2亿元）', '项目管理委员会组建方案', '外部供应商入围名单确认'],
     presenter: '张慧敏', estimatedMins: 20,
     materials: ['数字化三期立项申请书.pdf', '技术方案评估报告.pdf', '投资收益分析.xlsx'],
+    targetMeetings: ['广汽集团总经理办公会', '广州工业集团专题会'],
   },
   {
     id: 'T003',
@@ -162,6 +176,7 @@ const INIT_TOPICS: Topic[] = [
     decisionPoints: ['薪酬改革方案审批', '实施时间表确认', '配套激励基金额度授权'],
     presenter: '王芳', estimatedMins: 15,
     materials: ['薪酬改革方案.pdf', '标杆企业对标研究.pptx'],
+    targetMeetings: ['广汽集团总经理办公会'],
   },
   {
     id: 'T004',
@@ -174,6 +189,7 @@ const INIT_TOPICS: Topic[] = [
     decisionPoints: ['投资金额及股权比例审批', '尽调报告确认', '后续跟投权条款授权'],
     presenter: '陈志远', estimatedMins: 20,
     materials: ['投资尽调报告.pdf', '标的公司财务数据.xlsx'],
+    targetMeetings: ['广汽集团总经理办公会', '广汽集团董事会'],
   },
   {
     id: 'T005',
@@ -186,6 +202,7 @@ const INIT_TOPICS: Topic[] = [
     decisionPoints: ['年度合规评估结果确认'],
     presenter: '刘明', estimatedMins: 10,
     materials: ['合规年度评估报告.pdf'],
+    targetMeetings: ['广汽集团总经理办公会', '广汽集团党委会'],
   },
 ]
 
@@ -193,7 +210,7 @@ const INIT_MEETINGS: Meeting[] = [
   {
     id: 'M2026-08',
     title: '集团2026年8月总经理办公会',
-    typeId: 'gm-office',
+    typeId: 'gac-gm-office',
     date: '2026-08-15', time: '09:00', endTime: '12:00',
     location: '总部大厦28层第一会议室',
     chair: '马总（集团总经理）',
@@ -208,7 +225,7 @@ const INIT_MEETINGS: Meeting[] = [
   {
     id: 'M2026-08C',
     title: '数字化转型三期项目协调推进会',
-    typeId: 'coordination',
+    typeId: 'gz-industry-special',
     date: '2026-08-25', time: '14:00', endTime: '16:00',
     location: '总部大厦28层第一会议室',
     chair: '张副总（运营）',
@@ -220,7 +237,7 @@ const INIT_MEETINGS: Meeting[] = [
   {
     id: 'M2026-07',
     title: '集团2026年7月总经理办公会',
-    typeId: 'gm-office',
+    typeId: 'gac-gm-office',
     date: '2026-07-18', time: '09:00', endTime: '11:30',
     location: '总部大厦28层第一会议室',
     chair: '马总（集团总经理）',
@@ -232,7 +249,7 @@ const INIT_MEETINGS: Meeting[] = [
   {
     id: 'M2026-06',
     title: '2026年6月安全生产专题会',
-    typeId: 'special',
+    typeId: 'gz-industry-special',
     date: '2026-06-20', time: '14:00', endTime: '16:30',
     location: '总部大厦28层第一会议室',
     chair: '李副总（常务）',
@@ -244,7 +261,7 @@ const INIT_MEETINGS: Meeting[] = [
   {
     id: 'M2026-05',
     title: '2026年5月人才发展专题会',
-    typeId: 'special',
+    typeId: 'gz-industry-special',
     date: '2026-05-16', time: '09:30', endTime: '11:30',
     location: '总部大厦16层党建活动室',
     chair: '李副总（常务）',
@@ -493,14 +510,14 @@ function ModalFoot({ left, children }: { left?: React.ReactNode; children: React
 
 // ─── New Meeting Modal ────────────────────────────────────────────────────────
 
-function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gm-office' }: {
+function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
   onClose: () => void
   onSave: (m: Meeting) => void
   defaultTypeId?: string
 }) {
   const typeMeta = MEETING_TYPES.find(t => t.id === defaultTypeId) ?? MEETING_TYPES[0]
   const [typeId, setTypeId] = useState(defaultTypeId)
-  const [title, setTitle] = useState(`集团${typeMeta.name}`)
+  const [title, setTitle] = useState(typeMeta.name)
   const [date, setDate] = useState('2026-09-12')
   const [time, setTime] = useState('09:00')
   const [endTime, setEndTime] = useState('12:00')
@@ -548,7 +565,7 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gm-office' }: {
               key={t.id}
               type="button"
               className={`choice${typeId === t.id ? ' is-on' : ''}`}
-              onClick={() => { setTypeId(t.id); setActiveGroupId(null); setTitle(`集团${t.name}`) }}
+              onClick={() => { setTypeId(t.id); setActiveGroupId(null); setTitle(t.name) }}
             >
               {t.name}
             </button>
@@ -632,25 +649,31 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gm-office' }: {
 
 // ─── Topic Picker Modal ───────────────────────────────────────────────────────
 
-function TopicPickerModal({ topics, alreadyPicked, onClose, onAdd }: {
+function TopicPickerModal({ topics, alreadyPicked, meetingTypeId, onClose, onAdd }: {
   topics: Topic[]
   alreadyPicked: string[]
+  meetingTypeId: string
   onClose: () => void
   onAdd: (topicId: string) => void
 }) {
-  const available = topics.filter(t => (t.status === '待安排' || t.status === '已安排') && !alreadyPicked.includes(t.id))
+  const typeName = meetingTypeName(meetingTypeId)
+  const available = topics.filter(t =>
+    (t.status === '待安排' || t.status === '已安排')
+    && !alreadyPicked.includes(t.id)
+    && (t.targetMeetings ?? []).includes(typeName)
+  )
 
   return (
     <ModalShell
       title="添加议题"
-      kicker={`待安排 / 已安排 · ${available.length} 项`}
+      kicker={`${typeName} · ${available.length} 项可安排`}
       width={620}
       onClose={onClose}
       footer={<ModalFoot><Btn label="关闭" variant="ghost" onClick={onClose} /></ModalFoot>}
     >
       {available.length === 0 && (
         <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--muted-foreground)', fontSize: 13 }}>
-          暂无可安排的议题，请先在议题管理中提交申报
+          暂无申报「{typeName}」的待安排议题
         </div>
       )}
       {available.map(t => (
@@ -658,7 +681,7 @@ function TopicPickerModal({ topics, alreadyPicked, onClose, onAdd }: {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
               <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: 'var(--muted-foreground)' }}>{t.id}</span>
-              <Badge label={t.priority} color={priorityColor[t.priority]} />
+              <Badge label={t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')} color={urgencyColor[t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')]} />
             </div>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{t.title}</div>
             <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{t.dept} · {t.presenter} · {t.estimatedMins} 分钟</div>
@@ -883,6 +906,7 @@ function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
         <TopicPickerModal
           topics={topics}
           alreadyPicked={pickedIds}
+          meetingTypeId={meeting.typeId}
           onClose={() => setShowPicker(false)}
           onAdd={addTopic}
         />
@@ -999,9 +1023,6 @@ function MeetingDetail({ meeting, topics, onBack, onUpdate, onNav }: {
                           />
                           <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>分钟</span>
                         </div>
-
-                        {/* Priority */}
-                        <Badge label={t.priority} color={priorityColor[t.priority]} />
                       </div>
 
                       {/* Controls */}
@@ -1385,7 +1406,7 @@ function ProgressRing({ pct, color, center }: { pct: number; color: string; cent
   )
 }
 
-function Dashboard({ onNav }: { onNav: (s: NavSection) => void }) {
+function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => void; topics?: Topic[] }) {
   const asOf = '2026-08-28'
   const monthKey = asOf.slice(0, 7)
   const meetings = INIT_MEETINGS
@@ -1397,11 +1418,11 @@ function Dashboard({ onNav }: { onNav: (s: NavSection) => void }) {
   const finishRate = meetings.length ? Math.round((ended.length / meetings.length) * 100) : 0
 
   const topicFlow: { key: TopicStatus; n: number }[] = (['待安排', '已安排', '锁定中', '已上会'] as TopicStatus[]).map(key => ({
-    key, n: INIT_TOPICS.filter(t => t.status === key).length,
+    key, n: topics.filter(t => t.status === key).length,
   }))
   const topicPending = topicFlow[0].n
-  const topicMoved = INIT_TOPICS.length - topicPending
-  const topicRate = INIT_TOPICS.length ? Math.round((topicMoved / INIT_TOPICS.length) * 100) : 0
+  const topicMoved = topics.length - topicPending
+  const topicRate = topics.length ? Math.round((topicMoved / topics.length) * 100) : 0
 
   const actionN = {
     跟进中: ACTIONS.filter(a => a.status === '跟进中').length,
@@ -1437,7 +1458,7 @@ function Dashboard({ onNav }: { onNav: (s: NavSection) => void }) {
   const kpis = [
     { label: '会议办结率', value: `${finishRate}%`, tag: `本年 ${meetings.length} 场`, tone: 'navy', sub: `本月 ${monthMeetings.length} 场 · 已结束 ${ended.length} · 筹备中 ${meetings.length - ended.length}`, pct: finishRate, ring: `${finishRate}%`, color: '#1b365d', go: 'meetings' as NavSection },
     { label: '纪要归档率', value: `${archiveRate}%`, tag: pendingMinutes.length ? `待归档 ${pendingMinutes.length}` : '已清零', tone: pendingMinutes.length ? 'gold' : 'ok', sub: `已结束 ${ended.length} 场，已归档 ${archived.length} 场`, pct: archiveRate, ring: `${archiveRate}%`, color: '#c4a35a', go: 'minutes' as NavSection },
-    { label: '议题排期率', value: `${topicRate}%`, tag: `待安排 ${topicPending}`, tone: 'gold', sub: `申报 ${INIT_TOPICS.length} 项 · 已进入排期 ${topicMoved} 项`, pct: topicRate, ring: `${topicRate}%`, color: '#8a5a2b', go: 'topics' as NavSection },
+    { label: '议题排期率', value: `${topicRate}%`, tag: `待安排 ${topicPending}`, tone: 'gold', sub: `申报 ${topics.length} 项 · 已进入排期 ${topicMoved} 项`, pct: topicRate, ring: `${topicRate}%`, color: '#8a5a2b', go: 'topics' as NavSection },
     { label: '交办办结率', value: `${closeRate}%`, tag: dueSoon.length ? `临期 ${dueSoon.length}` : '在办稳定', tone: dueSoon.length || overdue.length ? 'warn' : 'ok', sub: `在办 ${inProgress} · 已关闭 ${actionN.已关闭} · 逾期 ${overdue.length}`, pct: closeRate, ring: `${closeRate}%`, color: '#2f5d4a', go: 'actions' as NavSection },
   ]
 
@@ -1468,7 +1489,7 @@ function Dashboard({ onNav }: { onNav: (s: NavSection) => void }) {
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>议题流转</div>
-            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>申报 {INIT_TOPICS.length} 项</span>
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>申报 {topics.length} 项</span>
           </div>
           <div className="funnel">
             {topicFlow.map((s, i) => (
@@ -1560,6 +1581,21 @@ function Dashboard({ onNav }: { onNav: (s: NavSection) => void }) {
           ))}
         </Card>
       </div>
+    </div>
+  )
+}
+
+const urgencyColor: Record<'紧急' | '急' | '一般', string> = {
+  '紧急': 'bg-red-50 text-red-700 border border-red-200',
+  '急': 'bg-amber-50 text-amber-800 border border-amber-200',
+  '一般': 'bg-stone-50 text-stone-600 border border-stone-200',
+}
+
+function YesNo({ value, onChange, disabled }: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <div className="yn">
+      <button type="button" className={value ? 'is-on' : ''} disabled={disabled} onClick={() => onChange(true)}>是</button>
+      <button type="button" className={!value ? 'is-on' : ''} disabled={disabled} onClick={() => onChange(false)}>否</button>
     </div>
   )
 }
@@ -1898,78 +1934,76 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
 }) {
   const isCreate = topic === null
   const isEditable = isCreate || topic.status === '待安排' || topic.status === '已安排'
+  const urgencyFromPriority = (p?: Priority): '紧急' | '急' | '一般' =>
+    p === '高' ? '紧急' : p === '低' ? '一般' : '急'
 
   const [form, setForm] = useState({
     title: topic?.title ?? '',
+    isTradeSecret: topic?.isTradeSecret ?? false,
+    isMajorDecision: topic?.isMajorDecision ?? false,
+    urgency: (topic?.urgency ?? urgencyFromPriority(topic?.priority)) as '紧急' | '急' | '一般',
+    targetMeetings: topic?.targetMeetings ?? [],
+    preLeader: topic?.preBrief?.leader ?? false,
+    preGm: topic?.preBrief?.gm ?? false,
+    preChairman: topic?.preBrief?.chairman ?? false,
     dept: topic?.dept ?? '',
     submitter: topic?.submitter ?? '',
     presenter: topic?.presenter ?? '',
-    priority: (topic?.priority ?? '中') as Priority,
-    estimatedMins: topic?.estimatedMins ?? 20,
-    background: topic?.background ?? '',
-    objective: topic?.objective ?? '',
-    dp1: topic?.decisionPoints[0] ?? '',
-    dp2: topic?.decisionPoints[1] ?? '',
-    dp3: topic?.decisionPoints[2] ?? '',
+    attendDepts: topic?.attendDepts ?? '',
+    attendEnterprises: topic?.attendEnterprises ?? '',
+    estimatedMins: topic?.estimatedMins && [3, 5, 8].includes(topic.estimatedMins) ? topic.estimatedMins : 5,
+    notes: topic?.notes ?? '',
   })
   const [files, setFiles] = useState<{ id: number; name: string; size: string }[]>(
     topic?.materials.map((m, i) => ({ id: i, name: m, size: '—' })) ?? []
   )
   const fileRef = useRef<HTMLInputElement>(null)
   const nextId = useRef(topic?.materials.length ?? 0)
-
-  const [aiTextOpen, setAiTextOpen] = useState(false)
-  const [aiTextInput, setAiTextInput] = useState('')
-  const [aiTextLoading, setAiTextLoading] = useState(false)
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'processing'>('idle')
   const voiceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [aiSummaryLoading, setAiSummaryLoading] = useState(false)
-  const [aiSummaryDone, setAiSummaryDone] = useState(!!topic?.aiSummary)
-  const [aiSummaryText, setAiSummaryText] = useState(topic?.aiSummary ?? '')
-  const [step, setStep] = useState<1 | 2>(1)
-  const [dpShown, setDpShown] = useState(() => {
-    const n = topic?.decisionPoints.filter(Boolean).length ?? 0
-    return Math.max(1, n || (topic === null ? 1 : 3))
-  })
 
-  const set = (k: string, v: string | number) => setForm(f => ({ ...f, [k]: v }))
-
-  const extractFromText = (text: string) => {
-    const lines = text.split(/[。！\n]/).filter(Boolean)
-    const deptMatch = text.match(/([一-龥]{2,8}部|[一-龥]{2,8}室|[一-龥]{2,6}中心)/)
-    const personMatch = text.match(/([张李王赵刘陈杨黄周吴马孙][^\s，。！,]{1,3})(?:提报|汇报|负责|主导)/)
+  const set = (k: string, v: string | number | boolean | string[]) => setForm(f => ({ ...f, [k]: v }))
+  const toggleMeeting = (name: string) => {
+    if (!isEditable) return
     setForm(f => ({
       ...f,
-      title: lines[0]?.slice(0, 40) || f.title,
-      dept: deptMatch?.[1] || f.dept,
-      submitter: personMatch?.[1] || f.submitter,
-      background: text.slice(0, 300),
-      objective: lines[1]?.slice(0, 100) || f.objective,
-      dp1: lines[2]?.slice(0, 60) || f.dp1,
+      targetMeetings: f.targetMeetings.includes(name)
+        ? f.targetMeetings.filter(x => x !== name)
+        : [...f.targetMeetings, name],
     }))
-    setAiSummaryDone(false); setAiSummaryText('')
   }
 
-  const runAiExtract = () => {
-    if (!aiTextInput.trim()) return
-    setAiTextLoading(true)
-    setTimeout(() => { extractFromText(aiTextInput); setAiTextLoading(false); setAiTextOpen(false); setAiTextInput('') }, 1400)
+  const fillFromVoice = () => {
+    setForm(f => ({
+      ...f,
+      title: '集团ERP系统升级改造项目立项申请',
+      dept: '信息技术部',
+      submitter: '张慧敏',
+      presenter: '张慧敏',
+      urgency: '急',
+      isMajorDecision: true,
+      isTradeSecret: false,
+      targetMeetings: f.targetMeetings.length ? f.targetMeetings : ['广汽集团总经理办公会'],
+      preLeader: true,
+      estimatedMins: 5,
+      notes: '信息技术部张慧敏提报，对集团现有ERP系统进行全面升级，预计投入2000万元，建设周期12个月。目标是提升业务处理效率30%以上。',
+    }))
+    setVoiceState('idle')
   }
 
   const startVoice = () => {
     setVoiceState('recording')
     voiceTimerRef.current = setTimeout(() => {
       setVoiceState('processing')
-      setTimeout(() => {
-        const mockText = '信息技术部张慧敏提报，集团ERP系统升级改造项目立项申请。本次申请对集团现有ERP系统进行全面升级，预计投入2000万元，建设周期12个月。目标是提升业务处理效率30%以上。主要决策点：项目预算审批。'
-        extractFromText(mockText)
-        setForm(f => ({ ...f, dept: '信息技术部', submitter: '张慧敏', title: '集团ERP系统升级改造项目立项申请', estimatedMins: 20 }))
-        setVoiceState('idle')
-      }, 1200)
-    }, 3000)
+      setTimeout(fillFromVoice, 1200)
+    }, 4000)
   }
 
-  const stopVoice = () => { if (voiceTimerRef.current) clearTimeout(voiceTimerRef.current); setVoiceState('idle') }
+  const stopVoice = () => {
+    if (voiceTimerRef.current) clearTimeout(voiceTimerRef.current)
+    setVoiceState('processing')
+    setTimeout(fillFromVoice, 1200)
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? [])
@@ -1982,211 +2016,211 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
 
   const fileIcon = (name: string) => name.endsWith('.pdf') ? 'PDF' : name.match(/pptx?$/) ? 'PPT' : name.match(/xlsx?$/) ? 'XLS' : 'DOC'
 
-  const generateSummary = () => {
-    setAiSummaryLoading(true)
-    setTimeout(() => {
-      const dps = [form.dp1, form.dp2, form.dp3].filter(Boolean)
-      const s = `本议题由${form.dept || '[部门]'}${form.submitter || '[提报人]'}提报，核心目标为"${(form.objective || form.background).slice(0, 50)}"。涉及决策事项${dps.length || 1}项，汇报人为${form.presenter || form.submitter || '[汇报人]'}，预计${form.estimatedMins}分钟。`
-      setAiSummaryText(s); setAiSummaryLoading(false); setAiSummaryDone(true)
-    }, 1500)
-  }
-
   const handleSave = () => {
-    const dps = [form.dp1, form.dp2, form.dp3].filter(Boolean)
+    const urgency = form.urgency
     const saved: Topic = {
       id: topic?.id ?? `T${String(Math.floor(Math.random() * 900) + 100)}`,
-      title: form.title, submitter: form.submitter, dept: form.dept,
+      title: form.title,
+      submitter: form.submitter,
+      dept: form.dept,
       submittedAt: topic?.submittedAt ?? new Date().toISOString().slice(0, 10),
-      status: topic?.status ?? '待安排', priority: form.priority,
-      background: form.background, objective: form.objective,
-      aiSummary: aiSummaryDone ? aiSummaryText : (topic?.aiSummary ?? (form.background.slice(0, 120) || '（暂无概要）')),
-      decisionPoints: dps.length > 0 ? dps : ['待补充'],
-      presenter: form.presenter || form.submitter,
+      status: topic?.status ?? '待安排',
+      priority: urgency === '紧急' ? '高' : urgency === '一般' ? '低' : '中',
+      background: topic?.background ?? form.notes,
+      objective: topic?.objective ?? '',
+      aiSummary: isCreate ? '' : (topic?.aiSummary ?? ''),
+      decisionPoints: topic?.decisionPoints ?? [],
+      presenter: form.presenter,
       estimatedMins: form.estimatedMins,
       materials: files.map(f => f.name),
+      isTradeSecret: form.isTradeSecret,
+      isMajorDecision: form.isMajorDecision,
+      urgency,
+      targetMeetings: form.targetMeetings,
+      preBrief: { leader: form.preLeader, gm: form.preGm, chairman: form.preChairman },
+      attendDepts: form.attendDepts,
+      attendEnterprises: form.attendEnterprises,
+      notes: form.notes,
     }
     onSave(saved)
     onClose()
   }
 
-  const canSave = form.title && form.dept && form.submitter && form.background
-  const canNext = canSave
+  const canSave = !!(form.title && form.dept && form.submitter && form.presenter && form.targetMeetings.length > 0 && files.length > 0)
   const inputCls = `field-input${!isEditable ? ' is-ro' : ''}`
-  const showBasics = !isCreate || step === 1
-  const showExtra = !isCreate || step === 2
-
-  const footerLeft = (
-    <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
-      {isCreate
-        ? (step === 1 ? '先填必填项，其余可稍后补充' : '以下均为选填，可直接提交')
-        : isEditable ? '修改后请保存' : '该议题已锁定，仅可查看'}
-    </span>
-  )
-
-  const assistBar = isEditable && (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-      <div style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>可用文字或语音自动填入</div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Btn label={aiTextOpen ? '收起' : '从文字提取'} variant="secondary" small onClick={() => setAiTextOpen(v => !v)} />
-        <Btn
-          label={voiceState === 'idle' ? '语音填报' : voiceState === 'recording' ? '录音中…' : '识别中…'}
-          variant={voiceState === 'idle' ? 'ghost' : 'danger'}
-          small
-          onClick={() => voiceState === 'idle' ? startVoice() : stopVoice()}
-        />
-      </div>
-    </div>
-  )
-
-  const extractBox = isEditable && aiTextOpen && (
-    <div className="form-sec" style={{ paddingBottom: 12 }}>
-      <textarea className="field-area" rows={3} value={aiTextInput} onChange={e => setAiTextInput(e.target.value)} placeholder="例如：战略发展部李建国提报，集团三季度业绩汇报…" />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-        <Btn label="取消" variant="ghost" small onClick={() => { setAiTextOpen(false); setAiTextInput('') }} />
-        <Btn label={aiTextLoading ? '提取中…' : '提取填入'} variant="primary" small disabled={aiTextLoading || !aiTextInput.trim()} onClick={runAiExtract} />
-      </div>
-    </div>
-  )
 
   return (
     <ModalShell
       title={isCreate ? '议题申报' : (form.title || '议题详情')}
-      kicker={isCreate ? '只需 4 项必填' : `议题详情 · ${topic.id}`}
+      kicker={isCreate ? undefined : `议题详情 · ${topic.id}`}
       extra={!isCreate ? <Badge label={topic.status} color={topicStatusColor[topic.status]} /> : undefined}
       width={920}
       expand
       onClose={onClose}
       footer={
-        <ModalFoot left={footerLeft}>
+        <ModalFoot left={!isCreate ? <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{isEditable ? '修改后请保存' : '该议题已锁定，仅可查看'}</span> : undefined}>
           <Btn label="关闭" variant="ghost" onClick={onClose} />
-          {isCreate && step === 2 && <Btn label="上一步" variant="ghost" onClick={() => setStep(1)} />}
           {!isCreate && topic.status === '已安排' && onLock && (
             <Btn label="锁定议题" variant="danger" onClick={() => { onLock(topic.id); onClose() }} />
           )}
-          {isCreate && step === 1 && (
-            <Btn label="下一步" variant="primary" disabled={!canNext} onClick={() => setStep(2)} />
-          )}
-          {isEditable && (!isCreate || step === 2) && (
+          {isEditable && (
             <Btn label={isCreate ? '提交申报' : '保存修改'} variant="primary" disabled={!canSave} onClick={handleSave} />
           )}
         </ModalFoot>
       }
     >
-      {isCreate && isEditable && (
-        <div className="form-steps">
-          <button type="button" className={`form-step${step === 1 ? ' is-on' : ''}`} onClick={() => setStep(1)}>
-            <span className="form-step-n">1</span>基本信息
-          </button>
-          <button type="button" className={`form-step${step === 2 ? ' is-on' : ''}`} onClick={() => canNext && setStep(2)}>
-            <span className="form-step-n">2</span>补充信息（选填）
-          </button>
-        </div>
-      )}
-
-      {showBasics && (
-        <>
-          {assistBar}
-          {extractBox}
-          <div className="form-sec">
-            <div className="form-sec-title">基本信息 <span>带 * 为必填</span></div>
-            <Field label="议题标题" required={isEditable}>
-              <input className={inputCls} readOnly={!isEditable} value={form.title} onChange={e => set('title', e.target.value)} placeholder="一句话概括，例如：集团XX项目立项审批" />
-            </Field>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="提报部门" required={isEditable}>
-                {isEditable
-                  ? (
-                    <select className="field-select" value={form.dept} onChange={e => set('dept', e.target.value)}>
-                      <option value="">请选择</option>
-                      {DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  )
-                  : <input className={inputCls} readOnly value={form.dept || '—'} />}
-              </Field>
-              <Field label="提报人" required={isEditable}>
-                <input className={inputCls} readOnly={!isEditable} value={form.submitter} onChange={e => set('submitter', e.target.value)} placeholder="姓名" />
-              </Field>
+      {isEditable && (
+        voiceState === 'recording' ? (
+          <div className="voice-bar is-rec">
+            <div className="voice-waves" aria-hidden>
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => (
+                <span key={i} style={{ animationDelay: `${i * 0.07}s` }} />
+              ))}
             </div>
-            <Field label="议题说明" required={isEditable}>
-              <textarea className="field-area" readOnly={!isEditable} rows={3} value={form.background} onChange={e => set('background', e.target.value)} placeholder="背景、要解决的问题，以及本次上会希望达成什么" />
-            </Field>
+            <span className="voice-rec-label">正在录音</span>
+            <Btn label="结束录音" variant="danger" small onClick={stopVoice} />
           </div>
-        </>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>可用语音口述，自动填入表单</div>
+            <Btn
+              label={voiceState === 'processing' ? '识别中…' : '语音填报'}
+              variant="secondary"
+              small
+              disabled={voiceState === 'processing'}
+              onClick={startVoice}
+            />
+          </div>
+        )
       )}
 
-      {showExtra && (
-        <div className="form-sec">
-          <div className="form-sec-title">上会安排 <span>均可不填，提交后办公室可再补</span></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <Field label="汇报人">
-              <input className={inputCls} readOnly={!isEditable} value={form.presenter} onChange={e => set('presenter', e.target.value)} placeholder="默认提报人" />
-            </Field>
-            <Field label="预计时长">
-              <select className="field-select" disabled={!isEditable} value={form.estimatedMins} onChange={e => set('estimatedMins', Number(e.target.value))}>
-                {[...new Set([10, 15, 20, 30, 45, 60, form.estimatedMins])].sort((a, b) => a - b).map(n => <option key={n} value={n}>{n} 分钟</option>)}
-              </select>
-            </Field>
-            <Field label="优先级">
-              <select className="field-select" disabled={!isEditable} value={form.priority} onChange={e => set('priority', e.target.value)}>
-                <option value="高">高</option>
-                <option value="中">中</option>
-                <option value="低">低</option>
-              </select>
-            </Field>
-          </div>
-          <Field label="决策点">
-            {(['dp1', 'dp2', 'dp3'] as const).slice(0, dpShown).map((k, i) => (
-              <div key={k} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: i < dpShown - 1 ? 8 : 0 }}>
-                <span style={{ width: 20, height: 20, borderRadius: '50%', background: form[k] ? 'var(--primary)' : 'var(--border)', color: form[k] ? '#fff' : 'var(--muted-foreground)', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
-                <input className={inputCls} readOnly={!isEditable} value={form[k]} onChange={e => set(k, e.target.value)} placeholder={isEditable ? '本次希望会议拍板的事项' : '—'} />
-              </div>
-            ))}
-            {isEditable && dpShown < 3 && (
-              <button type="button" onClick={() => setDpShown(n => n + 1)} style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>添加决策点</button>
-            )}
-          </Field>
-          <Field label="汇报材料">
-            {isEditable && (
-              <>
-                <input ref={fileRef} type="file" multiple accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx" style={{ display: 'none' }} onChange={handleFileChange} />
-                <DropZone
-                  title="上传材料（选填）"
-                  hint="PDF / PPT / Word / Excel"
-                  onClick={() => fileRef.current?.click()}
-                />
-              </>
-            )}
-            {files.length === 0 && !isEditable && <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>暂无附件</div>}
-            {files.map(f => (
-              <div key={f.id} className="file-row">
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', width: 36 }}>{fileIcon(f.name)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{f.size}</div>
-                </div>
-                {isEditable
-                  ? <button type="button" onClick={() => setFiles(p => p.filter(x => x.id !== f.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)' }}>移除</button>
-                  : <span style={{ fontSize: 12, color: 'var(--primary)', cursor: 'pointer' }}>预览</span>}
-              </div>
-            ))}
-          </Field>
-          {isEditable && (
-            <Field label="领导预览概要">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: aiSummaryDone ? 8 : 0 }}>
-                <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>提交后也可再生成</span>
-                <Btn label={aiSummaryLoading ? '生成中…' : aiSummaryDone ? '重新生成' : '生成概要'} variant="secondary" small disabled={aiSummaryLoading || !form.background} onClick={generateSummary} />
-              </div>
-              {aiSummaryDone && aiSummaryText && (
-                <div style={{ fontSize: 13, lineHeight: 1.75, background: '#fff', borderRadius: 6, padding: '10px 12px' }}>{aiSummaryText}</div>
-              )}
-            </Field>
-          )}
-          {!isCreate && !isEditable && (
-            <Field label="AI 概要">
-              <div style={{ fontSize: 13, color: aiSummaryText ? 'var(--foreground)' : 'var(--muted-foreground)', lineHeight: 1.75 }}>{aiSummaryText || '暂无概要'}</div>
-            </Field>
-          )}
+      <Field label="议题名称" required={isEditable}>
+        <input className={inputCls} readOnly={!isEditable} value={form.title} onChange={e => set('title', e.target.value)} placeholder="一句话概括议题名称" />
+      </Field>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <Field label="是否属于商密" required={isEditable}>
+          <YesNo value={form.isTradeSecret} disabled={!isEditable} onChange={v => set('isTradeSecret', v)} />
+        </Field>
+        <Field label="是否三重一大" required={isEditable}>
+          <YesNo value={form.isMajorDecision} disabled={!isEditable} onChange={v => set('isMajorDecision', v)} />
+        </Field>
+        <Field label="紧急程度" required={isEditable}>
+          <select className="field-select" disabled={!isEditable} value={form.urgency} onChange={e => set('urgency', e.target.value)}>
+            <option value="一般">一般</option>
+            <option value="急">急</option>
+            <option value="紧急">紧急</option>
+          </select>
+        </Field>
+      </div>
+
+      <Field label="拟上会议" required={isEditable}>
+        <div className="chip-pick">
+          {TARGET_MEETINGS.map(name => (
+            <button
+              key={name}
+              type="button"
+              className={form.targetMeetings.includes(name) ? 'is-on' : ''}
+              disabled={!isEditable}
+              onClick={() => toggleMeeting(name)}
+            >
+              {name}
+            </button>
+          ))}
         </div>
+      </Field>
+
+      <Field label="前置汇报情况">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div className="pre-brief">
+            <span>分管领导</span>
+            <YesNo value={form.preLeader} disabled={!isEditable} onChange={v => set('preLeader', v)} />
+          </div>
+          <div className="pre-brief">
+            <span>总经理</span>
+            <YesNo value={form.preGm} disabled={!isEditable} onChange={v => set('preGm', v)} />
+          </div>
+          <div className="pre-brief">
+            <span>董事长</span>
+            <YesNo value={form.preChairman} disabled={!isEditable} onChange={v => set('preChairman', v)} />
+          </div>
+        </div>
+      </Field>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <Field label="经办部门" required={isEditable}>
+          {isEditable
+            ? (
+              <select className="field-select" value={form.dept} onChange={e => set('dept', e.target.value)}>
+                <option value="">请选择</option>
+                {DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            )
+            : <input className={inputCls} readOnly value={form.dept || '—'} />}
+        </Field>
+        <Field label="经办人" required={isEditable}>
+          <input className={inputCls} readOnly={!isEditable} value={form.submitter} onChange={e => set('submitter', e.target.value)} placeholder="姓名" />
+        </Field>
+        <Field label="汇报人" required={isEditable}>
+          <input className={inputCls} readOnly={!isEditable} value={form.presenter} onChange={e => set('presenter', e.target.value)} placeholder="上会汇报人" />
+        </Field>
+      </div>
+
+      <Field label="汇报时长">
+        <select className="field-select" disabled={!isEditable} value={form.estimatedMins} onChange={e => set('estimatedMins', Number(e.target.value))}>
+          <option value={3}>3 分钟</option>
+          <option value={5}>5 分钟（一般）</option>
+          <option value={8}>8 分钟</option>
+        </select>
+      </Field>
+
+      <Field label="需列席部门">
+        <div className="field-note">
+          党委会 / 办公会固定列席部门无需填写，经办同事只写非固定列席部门，无则留空。
+          <div>党委会常列席：党委办公室、党委工作部、综合室、战略本部、审计专员办；前置研究议题另增：审计部、法律与合规部、董办。</div>
+          <div>办公会常列席：办公室、党委工作部/团委、人力资源部/组织部、综合室、品牌公关部、董办、财务本部、审计部/业务督察部、法律与合规部、战略本部、变革与流程管理办公室。</div>
+        </div>
+        <textarea className="field-area" readOnly={!isEditable} rows={2} value={form.attendDepts} onChange={e => set('attendDepts', e.target.value)} placeholder="仅填非固定列席部门，无则留空" />
+      </Field>
+
+      <Field label="需列席企业">
+        <input className={inputCls} readOnly={!isEditable} value={form.attendEnterprises} onChange={e => set('attendEnterprises', e.target.value)} placeholder="如有需列席的所属企业，请填写" />
+      </Field>
+
+      <Field label="汇报材料" required={isEditable}>
+        {isEditable && (
+          <>
+            <input ref={fileRef} type="file" multiple accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx" style={{ display: 'none' }} onChange={handleFileChange} />
+            <DropZone
+              title="点击上传汇报材料"
+              hint="至少上传 1 份 · PDF / PPT / Word / Excel"
+              onClick={() => fileRef.current?.click()}
+            />
+          </>
+        )}
+        {files.length === 0 && !isEditable && <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>暂无附件</div>}
+        {files.map(f => (
+          <div key={f.id} className="file-row">
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', width: 36 }}>{fileIcon(f.name)}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{f.size}</div>
+            </div>
+            {isEditable
+              ? <button type="button" onClick={() => setFiles(p => p.filter(x => x.id !== f.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)' }}>移除</button>
+              : <span style={{ fontSize: 12, color: 'var(--primary)', cursor: 'pointer' }}>预览</span>}
+          </div>
+        ))}
+      </Field>
+
+      <Field label="备注">
+        <textarea className="field-area" readOnly={!isEditable} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="其他需要说明的事项" />
+      </Field>
+
+      {!isCreate && topic.aiSummary && (
+        <Field label="系统概要">
+          <div style={{ fontSize: 13, lineHeight: 1.75, background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px' }}>{topic.aiSummary}</div>
+        </Field>
       )}
 
       {!isCreate && (
@@ -2199,10 +2233,7 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
   )
 }
 
-// ─── Topics View ──────────────────────────────────────────────────────────────
-
-function TopicsView() {
-  const [topics, setTopics] = useState<Topic[]>(INIT_TOPICS)
+function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>> }) {
   const [filter, setFilter] = useState<TopicStatus | '全部'>('全部')
   const [modal, setModal] = useState<{ topic: Topic | null } | null>(null)
   const [toast, setToast] = useState('')
@@ -2212,8 +2243,17 @@ function TopicsView() {
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
 
   const handleSave = (saved: Topic) => {
+    const isNew = saved.id.startsWith('T') && !INIT_TOPICS.some(t => t.id === saved.id) && !topics.some(t => t.id === saved.id)
     setTopics(prev => prev.some(t => t.id === saved.id) ? prev.map(t => t.id === saved.id ? saved : t) : [saved, ...prev])
-    showToast(saved.id.startsWith('T') && !INIT_TOPICS.some(t => t.id === saved.id) ? '议题申报成功！办公室统筹人员将安排上会时间。' : '议题已保存更新。')
+    if (isNew) {
+      showToast('议题申报成功。')
+      setTimeout(() => {
+        const summary = `【系统生成】${saved.title}。经办部门${saved.dept}，经办人${saved.submitter}，汇报人${saved.presenter}。拟上${saved.targetMeetings?.join('、') || '待定'}，时长${saved.estimatedMins}分钟。${saved.isMajorDecision ? '属三重一大。' : ''}${saved.isTradeSecret ? '涉及商密。' : ''}`
+        setTopics(prev => prev.map(t => t.id === saved.id ? { ...t, aiSummary: summary } : t))
+      }, 1600)
+    } else {
+      showToast('议题已保存更新。')
+    }
   }
 
   const handleLock = (id: string) => {
@@ -2266,7 +2306,7 @@ function TopicsView() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--secondary)', borderBottom: '1px solid var(--border)' }}>
-              {['编号', '议题名称', '提报部门', '提报人', '汇报人', '优先级', '时长', '状态', '操作'].map(h => (
+              {['编号', '议题名称', '经办部门', '经办人', '汇报人', '紧急程度', '时长', '状态', '操作'].map(h => (
                 <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -2285,12 +2325,12 @@ function TopicsView() {
                   <td style={{ padding: '12px 14px', fontSize: 12, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{t.id}</td>
                   <td style={{ padding: '12px 14px', maxWidth: 260 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.background?.slice(0, 60)}{t.background?.length > 60 ? '…' : ''}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.targetMeetings?.join('、') || t.notes || t.background?.slice(0, 60)}</div>
                   </td>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--muted-foreground)' }}>{t.dept}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13 }}>{t.submitter}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--muted-foreground)' }}>{t.presenter}</td>
-                  <td style={{ padding: '12px 14px' }}><Badge label={t.priority} color={priorityColor[t.priority]} /></td>
+                  <td style={{ padding: '12px 14px' }}><Badge label={t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')} color={urgencyColor[t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')]} /></td>
                   <td style={{ padding: '12px 14px', fontSize: 12, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{t.estimatedMins}min</td>
                   <td style={{ padding: '12px 14px' }}><Badge label={t.status} color={topicStatusColor[t.status]} /></td>
                   <td style={{ padding: '12px 14px' }}>
@@ -2465,21 +2505,6 @@ function MeetingLive() {
             </div>
 
             <div className="live-card">
-              <LiveHead title="决策事项" meta={`来源 ${materials[0].name}`} />
-              <div className="live-card-body" style={{ paddingTop: 8 }}>
-                {current.decisionPoints.length === 0 && (
-                  <div style={{ fontSize: 13, color: 'var(--muted-foreground)', padding: '8px 0' }}>暂无预设决策事项</div>
-                )}
-                {current.decisionPoints.map((dp, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '12px 0', borderBottom: i < current.decisionPoints.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
-                    <div style={{ fontSize: 14, color: 'var(--foreground)', fontWeight: 500, lineHeight: 1.65, paddingTop: 3 }}>{dp}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="live-card">
               <LiveHead
                 title="决议脉络"
                 meta="历史决策回溯"
@@ -2648,6 +2673,153 @@ function SupervisionTaskModal({ task, onClose, onSave, onDelete }: {
   )
 }
 
+function xmlEscape(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+function crc32(data: Uint8Array) {
+  let c = 0xffffffff
+  for (let i = 0; i < data.length; i++) {
+    c ^= data[i]
+    for (let j = 0; j < 8; j++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1))
+  }
+  return (c ^ 0xffffffff) >>> 0
+}
+
+function u16(n: number) {
+  return Uint8Array.of(n & 0xff, (n >>> 8) & 0xff)
+}
+
+function u32(n: number) {
+  return Uint8Array.of(n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff)
+}
+
+function concatBytes(parts: Uint8Array[]) {
+  const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0))
+  let o = 0
+  for (const p of parts) { out.set(p, o); o += p.length }
+  return out
+}
+
+function zipStore(files: { path: string; data: Uint8Array }[]) {
+  const now = new Date()
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)
+  const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()
+  const locals: Uint8Array[] = []
+  const centrals: Uint8Array[] = []
+  let offset = 0
+  const enc = new TextEncoder()
+  for (const f of files) {
+    const name = enc.encode(f.path)
+    const crc = crc32(f.data)
+    const local = concatBytes([
+      Uint8Array.of(0x50, 0x4b, 0x03, 0x04), u16(20), u16(0), u16(0),
+      u16(time), u16(date), u32(crc), u32(f.data.length), u32(f.data.length),
+      u16(name.length), u16(0), name, f.data,
+    ])
+    const central = concatBytes([
+      Uint8Array.of(0x50, 0x4b, 0x01, 0x02), u16(20), u16(20), u16(0), u16(0),
+      u16(time), u16(date), u32(crc), u32(f.data.length), u32(f.data.length),
+      u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name,
+    ])
+    locals.push(local)
+    centrals.push(central)
+    offset += local.length
+  }
+  const localAll = concatBytes(locals)
+  const centralAll = concatBytes(centrals)
+  const end = concatBytes([
+    Uint8Array.of(0x50, 0x4b, 0x05, 0x06), u16(0), u16(0),
+    u16(files.length), u16(files.length), u32(centralAll.length), u32(localAll.length), u16(0),
+  ])
+  return new Blob([concatBytes([localAll, centralAll, end])], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  })
+}
+
+function wParagraph(text: string, kind: 'title' | 'heading' | 'body') {
+  const t = xmlEscape(text)
+  const rFonts = '<w:rFonts w:ascii="SimSun" w:hAnsi="SimSun" w:eastAsia="SimSun"/>'
+  if (kind === 'title') {
+    return `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/>${rFonts}</w:rPr><w:t xml:space="preserve">${t || ' '}</w:t></w:r></w:p>`
+  }
+  if (kind === 'heading') {
+    return `<w:p><w:pPr><w:spacing w:before="240" w:after="80"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/>${rFonts}</w:rPr><w:t xml:space="preserve">${t || ' '}</w:t></w:r></w:p>`
+  }
+  return `<w:p><w:pPr><w:spacing w:after="80"/><w:ind w:firstLine="480"/></w:pPr><w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/>${rFonts}</w:rPr><w:t xml:space="preserve">${t || ' '}</w:t></w:r></w:p>`
+}
+
+function minutesDraftLines(meeting: Meeting): { text: string; kind: 'title' | 'heading' | 'body' }[] {
+  const typeName = meetingTypeName(meeting.typeId)
+  const topics = meeting.meetingTopics
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map(mt => INIT_TOPICS.find(t => t.id === mt.topicId))
+    .filter(Boolean) as Topic[]
+  const topicBlocks: { text: string; kind: 'title' | 'heading' | 'body' }[] = []
+  if (topics.length === 0) {
+    topicBlocks.push({ text: '（听记中涉及的议题请会务人员核对后补录。）', kind: 'body' })
+  } else {
+    topics.forEach((t, i) => {
+      const n = ['一', '二', '三', '四', '五', '六'][i] ?? String(i + 1)
+      topicBlocks.push({ text: `（${n}）${t.title}`, kind: 'heading' })
+      topicBlocks.push({ text: `汇报人：${t.presenter}（${t.dept}）。${t.aiSummary || t.background || ''}`, kind: 'body' })
+      topicBlocks.push({ text: '会议意见：原则同意相关安排，具体表述请对照听记核改。', kind: 'body' })
+    })
+  }
+  return [
+    { text: meeting.title, kind: 'title' },
+    { text: '会议纪要（初版）', kind: 'title' },
+    { text: `【生成说明】依据 AI 听记，套用「${typeName}」纪要模板自动起草。请下载本 Word 文件后在本地核改，核改完成再导入终版。`, kind: 'body' },
+    { text: '一、会议概况', kind: 'heading' },
+    { text: `时间：${meeting.date} ${meeting.time}–${meeting.endTime}`, kind: 'body' },
+    { text: `地点：${meeting.location}`, kind: 'body' },
+    { text: `主持人：${meeting.chair}`, kind: 'body' },
+    { text: `出席人员：${meeting.attendees.join('、')}`, kind: 'body' },
+    { text: '二、议题审议', kind: 'heading' },
+    ...topicBlocks,
+    { text: '三、会议决议', kind: 'heading' },
+    { text: '1. 对上述议题所涉事项原则通过，由责任部门按会议要求推进。', kind: 'body' },
+    { text: '2. 具体节点、责任人及完成时限，请结合听记原文核对后写入终版。', kind: 'body' },
+    { text: '四、其他事项', kind: 'heading' },
+    { text: '下次会议将对本次议定事项进展进行通报。', kind: 'body' },
+  ]
+}
+
+function buildMinutesDocx(meeting: Meeting) {
+  const enc = new TextEncoder()
+  const body = minutesDraftLines(meeting).map(l => wParagraph(l.text, l.kind)).join('')
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1800" w:bottom="1440" w:left="1800"/></w:sectPr></w:body></w:document>`
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`
+  const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`
+  return zipStore([
+    { path: '[Content_Types].xml', data: enc.encode(contentTypes) },
+    { path: '_rels/.rels', data: enc.encode(rels) },
+    { path: 'word/document.xml', data: enc.encode(documentXml) },
+    { path: 'word/_rels/document.xml.rels', data: enc.encode(docRels) },
+  ])
+}
+
+function formatBytes(n: number) {
+  return n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`
+}
+
+function downloadBlob(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) {
   const archived = INIT_MINUTES[meeting.id]
   const fileRef = useRef<HTMLInputElement>(null)
@@ -2656,7 +2828,6 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
   )
   const [aiState, setAiState] = useState<'idle' | 'parsing' | 'done'>(archived ? 'done' : 'idle')
   const [aiSummary, setAiSummary] = useState(archived?.summary ?? '')
-  const [minutesBody, setMinutesBody] = useState<string[]>(archived?.body ?? [])
   const [tasks, setTasks] = useState<SupervisionTask[]>(archived?.tasks ?? [])
   const [isArchive, setIsArchive] = useState(!!archived)
   const [showTaskModal, setShowTaskModal] = useState(false)
@@ -2664,14 +2835,28 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
   const [confirmed, setConfirmed] = useState(!!archived)
   const [confirming, setConfirming] = useState(false)
   const [toast, setToast] = useState('')
+  const [draftState, setDraftState] = useState<'idle' | 'generating' | 'ready'>('idle')
+  const [draftFile, setDraftFile] = useState<{ name: string; size: string; blob: Blob } | null>(null)
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
+
+  const generateDraft = () => {
+    setDraftState('generating')
+    setTimeout(() => {
+      const blob = buildMinutesDocx(meeting)
+      const name = `${meeting.title}会议纪要（初版）.docx`
+      const file = { name, size: formatBytes(blob.size), blob }
+      setDraftFile(file)
+      setDraftState('ready')
+      downloadBlob(blob, name)
+      showToast('初版 Word 已生成，请下载后在本地核改。')
+    }, 1800)
+  }
 
   const resetMinutes = () => {
     setMinutesFile(null)
     setAiState('idle')
     setAiSummary('')
-    setMinutesBody([])
     setTasks([])
     setConfirmed(false)
     setIsArchive(false)
@@ -2685,10 +2870,6 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
     setAiState('parsing')
     setConfirmed(false)
     setTimeout(() => {
-      setMinutesBody([
-        `根据上传文件《${f.name}》解析。本次${meeting.title}由${meeting.chair}主持，共${meeting.attendees.length}名人员出席。`,
-        '会议就相关议题进行审议，原则通过所涉事项，要求责任部门按节点推进落实。下次会议将对本次督办事项进行集中汇报。',
-      ])
       setAiSummary(`本次${meeting.title}由${meeting.chair}主持，共${meeting.attendees.length}名人员出席。会议就${meeting.meetingTopics.length}项议题进行审议，形成如下主要决定：一、各项议题所涉事项原则通过，相关责任部门按照会议要求推进落实；二、重点工程项目加快推进节奏，各牵头单位需在规定时间节点前完成阶段性目标；三、下次办公会将对本次督办事项进行集中汇报。`)
       setTasks([
         { id: 'ST1', text: '数字化转型三期项目完成供应商招标文件发布', detail: '按照董事会批复，完成招标文件编制、合规审查并在官网发布，同时在系统完成归档。', assignee: '张慧敏', follower: '王总助', deadline: '2026-09-15', checked: true },
@@ -2725,20 +2906,64 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
 
       {toast && <div className="toast">{toast}</div>}
 
+      {!isArchive && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>生成初版会议纪要</div>
+              <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4, lineHeight: 1.6 }}>
+                基于 AI 听记，套用「{meetingTypeName(meeting.typeId)}」纪要模板生成 Word 初版。请下载后在本地核改，再导入终版。
+              </div>
+            </div>
+            <Btn
+              label={draftState === 'generating' ? '生成中…' : draftState === 'ready' ? '重新生成' : '生成初版'}
+              variant="primary"
+              small
+              disabled={draftState === 'generating'}
+              onClick={generateDraft}
+            />
+          </div>
+          {draftState === 'idle' && (
+            <div className="field-note">听记已就绪。生成后将得到 Word 附件，请在 Word 中核对时间、决议表述和责任人。</div>
+          )}
+          {draftState === 'generating' && (
+            <div style={{ fontSize: 13, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0' }}>
+              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse-ring 1s infinite' }} />
+              正在匹配听记与模板，生成 Word 初版…
+            </div>
+          )}
+          {draftState === 'ready' && draftFile && (
+            <div className="file-row">
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', width: 36 }}>DOC</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{draftFile.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{draftFile.size} · Word 初版，请下载后本地核改</div>
+              </div>
+              <Btn label="下载" variant="ghost" small onClick={() => downloadBlob(draftFile.blob, draftFile.name)} />
+            </div>
+          )}
+        </Card>
+      )}
+
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>{isArchive ? '会议纪要文件' : '上传会议纪要'}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>{isArchive ? '会议纪要文件' : '导入终版会议纪要'}</div>
           {isArchive && archived && (
             <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>归档于 {archived.archivedAt}</span>
           )}
         </div>
         <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
+        {!isArchive && draftState !== 'ready' && !minutesFile && (
+          <div className="field-note">请先生成 Word 初版并在本地核改，再导入终版。导入后系统将解析摘要并生成交办事项。</div>
+        )}
         {!minutesFile ? (
+          (isArchive || draftState === 'ready') ? (
           <DropZone
-            title="点击上传会议纪要文件"
-            hint="支持 PDF · Word · TXT，上传后 AI 自动解析"
+            title="点击导入终版会议纪要"
+            hint="支持 PDF · Word · TXT，上传后 AI 自动解析摘要和督办事项"
             onClick={() => fileRef.current?.click()}
           />
+          ) : null
         ) : (
           <div className="file-row">
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', width: 36 }}>FILE</span>
@@ -2760,20 +2985,6 @@ function MeetingMinutesPanel({ meeting }: { meeting: typeof INIT_MEETINGS[0] }) 
 
       {aiState === 'done' && (
         <>
-          {minutesBody.length > 0 && (
-            <Card style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>纪要正文</div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>{isArchive ? '历史归档全文' : '根据上传文件整理'}</div>
-              </div>
-              <div style={{ background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 7, padding: '14px 16px' }}>
-                {minutesBody.map((p, i) => (
-                  <p key={i} style={{ fontSize: 13, color: '#374151', lineHeight: 1.85, margin: i === 0 ? 0 : '12px 0 0' }}>{p}</p>
-                ))}
-              </div>
-            </Card>
-          )}
-
           <Card style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>AI 智能摘要</div>
@@ -2853,7 +3064,7 @@ function MinutesView() {
 
   return (
     <div>
-      <SectionHeader title="会议纪要" subtitle="已结束会议的历史纪要在此查阅 · 待上传的可由 AI 提取摘要和督办事项 · 确认后同步至 TB" />
+      <SectionHeader title="会议纪要" subtitle="先生成 Word 初版并本地核改，再导入终版解析摘要与督办事项 · 已归档纪要可直接查阅" />
 
       {meetings.length === 0 && (
         <div className="empty">
@@ -3218,6 +3429,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('meetings')
+  const [topics, setTopics] = useState<Topic[]>(INIT_TOPICS)
   const groups = [...new Set(NAV_ITEMS.map(i => i.group))]
 
   return (
@@ -3298,9 +3510,9 @@ export default function App() {
           </div>
         </header>
         <main style={{ flex: 1, padding: '28px 32px' }}>
-          {activeSection === 'dashboard' && <Dashboard onNav={setActiveSection} />}
-          {activeSection === 'topics' && <TopicsView />}
-          {activeSection === 'meetings' && <MeetingsView topics={INIT_TOPICS} onNav={setActiveSection} />}
+          {activeSection === 'dashboard' && <Dashboard onNav={setActiveSection} topics={topics} />}
+          {activeSection === 'topics' && <TopicsView topics={topics} setTopics={setTopics} />}
+          {activeSection === 'meetings' && <MeetingsView topics={topics} onNav={setActiveSection} />}
           {activeSection === 'meeting-live' && <MeetingLive />}
           {activeSection === 'minutes' && <MinutesView />}
           {activeSection === 'actions' && <ActionsView />}
