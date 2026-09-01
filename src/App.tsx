@@ -72,6 +72,10 @@ interface Meeting {
   location: string
   chair: string
   attendees: string[]
+  observers: string[]
+  disciplineStaff: string[]
+  organizer: string
+  organizeDept: string
   meetingTopics: MeetingTopic[]
   status: MeetingStatus
   notes: string
@@ -108,6 +112,8 @@ const TARGET_MEETINGS = MEETING_TYPES.map(t => t.name)
 function meetingTypeName(typeId: string) {
   return MEETING_TYPES.find(t => t.id === typeId)?.name ?? typeId
 }
+
+const MEETING_ORG_DEPTS = ['集团办公室', '党委办公室', '董事会办公室', '战略发展部', '人力资源部', '综合室']
 
 // ─── Attendee Groups ──────────────────────────────────────────────────────────
 
@@ -327,6 +333,10 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦28层第一会议室',
     chair: '马总（集团总经理）',
     attendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '王总助', '李建国', '张慧敏', '王芳'],
+    observers: ['财务本部 刘会计', '品牌公关部 周薇'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '集团办公室',
     meetingTopics: [
       { topicId: 'T003', order: 1 },
       { topicId: 'T004', order: 2 },
@@ -342,6 +352,10 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦28层第一会议室',
     chair: '张副总（运营）',
     attendees: ['张副总（运营）', '王总助', '张慧敏', '李建国', '陈志远'],
+    observers: ['变革与流程管理办公室 吴工', '财务本部 刘会计'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '集团办公室',
     meetingTopics: [{ topicId: 'T002', order: 1 }],
     status: '已结束',
     notes: '',
@@ -354,6 +368,10 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦28层第一会议室',
     chair: '马总（集团总经理）',
     attendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '赵国栋', '孙丽华'],
+    observers: ['战略本部 钱策', '董办 林秘'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '集团办公室',
     meetingTopics: [
       { topicId: 'T006', order: 1 },
       { topicId: 'T007', order: 2 },
@@ -370,6 +388,10 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦28层第一会议室',
     chair: '李副总（常务）',
     attendees: ['李副总（常务）', '王总助', '周建平', '孙丽华'],
+    observers: ['安全环保部相关处室列席'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '集团办公室',
     meetingTopics: [{ topicId: 'T008', order: 1 }],
     status: '已结束',
     notes: '会议纪要已归档',
@@ -382,6 +404,10 @@ const INIT_MEETINGS: Meeting[] = [
     location: '总部大厦16层党建活动室',
     chair: '李副总（常务）',
     attendees: ['李副总（常务）', '王芳', '王总助'],
+    observers: ['党委工作部 组织处列席'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '集团办公室',
     meetingTopics: [{ topicId: 'T009', order: 1 }],
     status: '已结束',
     notes: '会议纪要已归档',
@@ -615,6 +641,44 @@ function Field({ label, required, children }: { label: string; required?: boolea
   )
 }
 
+function NameChipField({ label, names, onChange, placeholder }: {
+  label: string
+  names: string[]
+  onChange: (next: string[]) => void
+  placeholder?: string
+}) {
+  const [input, setInput] = useState('')
+  const add = () => {
+    const v = input.trim()
+    if (v && !names.includes(v)) { onChange([...names, v]); setInput('') }
+  }
+  return (
+    <Field label={`${label}（${names.length}人）`}>
+      {names.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, padding: 10, background: 'var(--muted)', borderRadius: 6 }}>
+          {names.map(a => (
+            <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#fff', border: '1px solid var(--border)', borderRadius: 4, fontSize: 12 }}>
+              {a}
+              <button type="button" onClick={() => onChange(names.filter(x => x !== a))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="field-input"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+          placeholder={placeholder ?? '输入姓名后按 Enter 添加'}
+          style={{ flex: 1 }}
+        />
+        <Btn label="添加" variant="secondary" onClick={add} />
+      </div>
+    </Field>
+  )
+}
+
 function ModalFoot({ left, children }: { left?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: left ? 'space-between' : 'flex-end', width: '100%', gap: 8 }}>
@@ -639,7 +703,11 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
   const [endTime, setEndTime] = useState('12:00')
   const [location, setLocation] = useState('总部大厦28层第一会议室')
   const [chair, setChair] = useState('马总（集团总经理）')
+  const [organizer, setOrganizer] = useState('王总助')
+  const [organizeDept, setOrganizeDept] = useState('集团办公室')
   const [attendees, setAttendees] = useState<string[]>([])
+  const [observers, setObservers] = useState<string[]>([])
+  const [disciplineStaff, setDisciplineStaff] = useState<string[]>([])
   const [attendeeInput, setAttendeeInput] = useState('')
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
 
@@ -657,7 +725,11 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
 
   const handleSave = () => {
     const id = `M${date.replace(/-/g, '').slice(0, 6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-    onSave({ id, title, typeId, date, time, endTime, location, chair, attendees, meetingTopics: [], status: '筹备中', notes: '' })
+    onSave({
+      id, title, typeId, date, time, endTime, location, chair,
+      attendees, observers, disciplineStaff, organizer, organizeDept,
+      meetingTopics: [], status: '筹备中', notes: '',
+    })
     onClose()
   }
 
@@ -665,7 +737,7 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
     <ModalShell
       title="新建会议"
       kicker="会前准备"
-      width={620}
+      width={680}
       onClose={onClose}
       footer={
         <ModalFoot>
@@ -711,6 +783,17 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
       <Field label="主持人">
         <input className="field-input" value={chair} onChange={e => setChair(e.target.value)} placeholder="如：马总（集团总经理）" />
       </Field>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="会议组织人">
+          <input className="field-input" value={organizer} onChange={e => setOrganizer(e.target.value)} placeholder="如：王总助" />
+        </Field>
+        <Field label="组织部门">
+          <select className="field-select" value={organizeDept} onChange={e => setOrganizeDept(e.target.value)}>
+            {MEETING_ORG_DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </Field>
+      </div>
 
       <Field label={`参会人员（${attendees.length}人）`}>
         {suggestedGroups.length > 0 && (
@@ -759,6 +842,19 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
           <Btn label="添加" variant="secondary" onClick={addAttendee} />
         </div>
       </Field>
+
+      <NameChipField
+        label="列席人员"
+        names={observers}
+        onChange={setObservers}
+        placeholder="输入列席人员姓名后按 Enter 添加"
+      />
+      <NameChipField
+        label="纪检部门人员"
+        names={disciplineStaff}
+        onChange={setDisciplineStaff}
+        placeholder="输入纪检人员姓名后按 Enter 添加"
+      />
     </ModalShell>
   )
 }
@@ -938,6 +1034,7 @@ function NotifyModal({ meeting, onClose, onSend }: {
         <div>时间：{meeting.date} {meeting.time}–{meeting.endTime}</div>
         <div>地点：{meeting.location}</div>
         <div>主持：{meeting.chair}</div>
+        {meeting.organizer && <div>组织：{meeting.organizer}（{meeting.organizeDept}）</div>}
       </div>
     </ModalShell>
   )
@@ -1075,6 +1172,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
                   <span>{meeting.date} {meeting.time}–{meeting.endTime}</span>
                   <span>{meeting.location}</span>
                   <span>主持 {meeting.chair}</span>
+                  {meeting.organizer && <span>组织 {meeting.organizer}（{meeting.organizeDept}）</span>}
                 </div>
               </div>
               <Badge label={meeting.status} color={meetingStatusColor[meeting.status]} />
@@ -1251,6 +1349,22 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
                 </div>
                 <div style={{ fontSize: 13 }}>{name}</div>
               </div>
+            ))}
+          </Card>
+
+          <Card>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>列席 / 纪检 / 组织</div>
+            <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 8 }}>会议组织人</div>
+            <div style={{ fontSize: 13, marginBottom: 10 }}>{meeting.organizer || '—'}{meeting.organizeDept ? ` · ${meeting.organizeDept}` : ''}</div>
+            <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 6 }}>列席人员（{meeting.observers.length}人）</div>
+            {meeting.observers.length === 0 && <div style={{ fontSize: 13, color: 'var(--muted-foreground)', marginBottom: 10 }}>—</div>}
+            {meeting.observers.map((name, i) => (
+              <div key={i} style={{ fontSize: 13, marginBottom: 6 }}>{name}</div>
+            ))}
+            <div style={{ fontSize: 12, color: 'var(--muted-foreground)', margin: '10px 0 6px' }}>纪检部门人员（{meeting.disciplineStaff.length}人）</div>
+            {meeting.disciplineStaff.length === 0 && <div style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>—</div>}
+            {meeting.disciplineStaff.map((name, i) => (
+              <div key={i} style={{ fontSize: 13, marginBottom: 6 }}>{name}</div>
             ))}
           </Card>
 
@@ -2993,7 +3107,11 @@ function minutesDraftLines(meeting: Meeting): { text: string; kind: 'title' | 'h
     { text: `时间：${meeting.date} ${meeting.time}–${meeting.endTime}`, kind: 'body' },
     { text: `地点：${meeting.location}`, kind: 'body' },
     { text: `主持人：${meeting.chair}`, kind: 'body' },
+    { text: `会议组织人：${meeting.organizer || '—'}`, kind: 'body' },
+    { text: `组织部门：${meeting.organizeDept || '—'}`, kind: 'body' },
     { text: `出席人员：${meeting.attendees.join('、')}`, kind: 'body' },
+    { text: `列席人员：${meeting.observers.length ? meeting.observers.join('、') : '无'}`, kind: 'body' },
+    { text: `纪检部门人员：${meeting.disciplineStaff.length ? meeting.disciplineStaff.join('、') : '无'}`, kind: 'body' },
     { text: '二、议题审议', kind: 'heading' },
     ...topicBlocks,
     { text: '三、会议决议', kind: 'heading' },
@@ -3361,7 +3479,7 @@ function MinutesView({ topics, setTopics }: { topics: Topic[]; setTopics: React.
               <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 18px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>{selected.title}</div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{selected.date} {selected.time}–{selected.endTime} · {selected.location} · 主持：{selected.chair}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{selected.date} {selected.time}–{selected.endTime} · {selected.location} · 主持：{selected.chair}{selected.organizer ? ` · 组织：${selected.organizer}` : ''}</div>
                 </div>
                 <Badge
                   label={selectedArchived ? '纪要已归档' : selected.status}
