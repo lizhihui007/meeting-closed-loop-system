@@ -10,6 +10,7 @@ type NavSection =
   | 'meeting-live'
   | 'minutes'
   | 'actions'
+  | 'roles'
 
 type TopicStatus = '待安排' | '已安排' | '锁定中' | '已上会'
 type ActionStatus = '跟进中' | '待确认关闭' | '已关闭'
@@ -17,6 +18,23 @@ type MeetingStatus = '筹备中' | '进行中' | '已结束'
 type Priority = '高' | '中' | '低'
 type MeetingTypeCategory = '总经办' | '经营管理会'
 type TopicKind = '总经办议题' | '经营管理会议题'
+type UserRole = string
+
+type RoleModule = Exclude<NavSection, 'roles'>
+
+interface RoleDef {
+  id: string
+  name: string
+  desc: string
+  dept: string
+  avatar: string
+  scope: MeetingTypeCategory | null
+  modules: RoleModule[]
+  members: string[]
+  enabled: boolean
+  isManager: boolean
+  isSystem?: boolean
+}
 
 interface Topic {
   id: string
@@ -111,6 +129,10 @@ interface MeetingTypeDef {
   color: string
   bg: string
   enabled: boolean
+  usualChair: string
+  usualAttendees: string[]
+  usualObservers: string[]
+  usualDiscipline: string[]
 }
 
 const TYPE_PALETTE = [
@@ -123,14 +145,70 @@ const TYPE_PALETTE = [
 ]
 
 const INIT_MEETING_TYPES: MeetingTypeDef[] = [
-  { id: 'gac-gm-office',       name: '广汽集团总经理办公会',     desc: '广汽集团总经理主持的综合性决策会议', category: '总经办',     color: '#1b365d', bg: '#eef2f6', enabled: true },
-  { id: 'gac-party',           name: '广汽集团党委会',           desc: '广汽集团党委决策会议',               category: '总经办',     color: '#6b2e2e', bg: '#f8eeee', enabled: true },
-  { id: 'gac-board',           name: '广汽集团董事会',           desc: '广汽集团董事会会议',                 category: '总经办',     color: '#2a3558', bg: '#eef0f4', enabled: true },
-  { id: 'gac-industry-party',  name: '广汽工业集团党委会',       desc: '广汽工业集团党委决策会议',           category: '总经办',     color: '#8b3a3a', bg: '#f6eeee', enabled: true },
-  { id: 'gac-industry-board',  name: '广汽集团工业集团董事会',   desc: '广汽工业集团董事会会议',             category: '总经办',     color: '#3d4a6b', bg: '#eef0f4', enabled: true },
-  { id: 'gz-industry-special', name: '广州工业集团专题会',       desc: '广州工业集团专项研究会议',           category: '总经办',     color: '#2c5f6e', bg: '#eef4f5', enabled: true },
-  { id: 'ops-monthly',         name: '月度经营分析会',           desc: '月度经营数据复盘与策略研判',         category: '经营管理会', color: '#2f5d4a', bg: '#eef4f1', enabled: true },
-  { id: 'ops-dispatch',        name: '经营调度会',               desc: '跨板块经营调度与协同推进',           category: '经营管理会', color: '#8a5a2b', bg: '#f5f0ea', enabled: true },
+  {
+    id: 'gac-gm-office', name: '广汽集团总经理办公会', desc: '广汽集团总经理主持的综合性决策会议',
+    category: '总经办', color: '#1b365d', bg: '#eef2f6', enabled: true,
+    usualChair: '马总（集团总经理）',
+    usualAttendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '王总助', '各部门主要负责人'],
+    usualObservers: ['财务本部 刘会计', '品牌公关部 周薇'],
+    usualDiscipline: ['纪委办公室 陈监察'],
+  },
+  {
+    id: 'gac-party', name: '广汽集团党委会', desc: '广汽集团党委决策会议',
+    category: '总经办', color: '#6b2e2e', bg: '#f8eeee', enabled: true,
+    usualChair: '马总（党委书记）',
+    usualAttendees: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长'],
+    usualObservers: ['党委工作部 组织处列席'],
+    usualDiscipline: ['纪委办公室 陈监察'],
+  },
+  {
+    id: 'gac-board', name: '广汽集团董事会', desc: '广汽集团董事会会议',
+    category: '总经办', color: '#2a3558', bg: '#eef0f4', enabled: true,
+    usualChair: '马总（董事长）',
+    usualAttendees: ['马总（董事长）', '李总（执行董事）', '张董事', '王独立董事', '陈独立董事', '董事会秘书'],
+    usualObservers: ['董办 林秘'],
+    usualDiscipline: ['纪委办公室 陈监察'],
+  },
+  {
+    id: 'gac-industry-party', name: '广汽工业集团党委会', desc: '广汽工业集团党委决策会议',
+    category: '总经办', color: '#8b3a3a', bg: '#f6eeee', enabled: true,
+    usualChair: '马总（党委书记）',
+    usualAttendees: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长'],
+    usualObservers: ['党委工作部 组织处列席'],
+    usualDiscipline: ['纪委办公室 陈监察'],
+  },
+  {
+    id: 'gac-industry-board', name: '广汽集团工业集团董事会', desc: '广汽工业集团董事会会议',
+    category: '总经办', color: '#3d4a6b', bg: '#eef0f4', enabled: true,
+    usualChair: '马总（董事长）',
+    usualAttendees: ['马总（董事长）', '李总（执行董事）', '张董事', '王独立董事', '陈独立董事', '董事会秘书'],
+    usualObservers: ['董办 林秘'],
+    usualDiscipline: ['纪委办公室 陈监察'],
+  },
+  {
+    id: 'gz-industry-special', name: '广州工业集团专题会', desc: '广州工业集团专项研究会议',
+    category: '总经办', color: '#2c5f6e', bg: '#eef4f5', enabled: true,
+    usualChair: '分管副总',
+    usualAttendees: ['分管副总', '项目负责人', '相关部门负责人', '办公室主任'],
+    usualObservers: [],
+    usualDiscipline: ['纪委办公室 陈监察'],
+  },
+  {
+    id: 'ops-monthly', name: '月度经营分析会', desc: '月度经营数据复盘与策略研判',
+    category: '经营管理会', color: '#2f5d4a', bg: '#eef4f1', enabled: true,
+    usualChair: '马总（集团总经理）',
+    usualAttendees: ['马总（集团总经理）', '李副总（常务）', '财务部长', '战略部长', '各业务板块负责人'],
+    usualObservers: ['财务本部 刘会计'],
+    usualDiscipline: ['纪委办公室 陈监察'],
+  },
+  {
+    id: 'ops-dispatch', name: '经营调度会', desc: '跨板块经营调度与协同推进',
+    category: '经营管理会', color: '#8a5a2b', bg: '#f5f0ea', enabled: true,
+    usualChair: '张副总（运营）',
+    usualAttendees: ['张副总（运营）', '王总助', '各业务板块负责人', '办公室主任'],
+    usualObservers: ['变革与流程管理办公室 吴工'],
+    usualDiscipline: ['纪委办公室 陈监察'],
+  },
 ]
 
 function meetingTypeName(typeId: string, types: MeetingTypeDef[] = INIT_MEETING_TYPES) {
@@ -149,6 +227,180 @@ function useMeetingCatalog() {
 function typeNamesForKind(types: MeetingTypeDef[], kind: TopicKind) {
   const cat: MeetingTypeCategory = kind === '经营管理会议题' ? '经营管理会' : '总经办'
   return types.filter(t => t.enabled && t.category === cat).map(t => t.name)
+}
+
+const ALL_ROLE_MODULES: { id: RoleModule; label: string }[] = [
+  { id: 'dashboard', label: '管理驾驶舱' },
+  { id: 'meeting-types', label: '会议类型' },
+  { id: 'topics', label: '议题申报' },
+  { id: 'meetings', label: '会议管理' },
+  { id: 'meeting-live', label: '会中管控' },
+  { id: 'minutes', label: '会议纪要' },
+  { id: 'actions', label: '交办事项' },
+]
+
+const BUSINESS_MODULES: RoleModule[] = ['dashboard', 'topics', 'meetings', 'meeting-live', 'minutes', 'actions']
+
+/** 未分配管理角色的登录人：可进系统、可申报议题，仅看本人数据，无需在角色管理中维护 */
+const EMPLOYEE_ROLE_ID = 'employee'
+
+const DEMO_PEOPLE = ['张慧敏', '李建国', '王芳', '陈志远', '赵国栋', '孙丽华', '周建平', '刘明']
+
+interface Person {
+  id: string
+  name: string
+  dept: string
+  title: string
+}
+
+const PERSON_DIRECTORY: Person[] = [
+  { id: 'p-ma-gm', name: '马总（集团总经理）', dept: '集团领导', title: '集团总经理' },
+  { id: 'p-ma-party', name: '马总（党委书记）', dept: '集团领导', title: '党委书记' },
+  { id: 'p-ma-board', name: '马总（董事长）', dept: '集团领导', title: '董事长' },
+  { id: 'p-li-exec', name: '李副总（常务）', dept: '集团领导', title: '常务副总经理' },
+  { id: 'p-li-party', name: '李副书记', dept: '集团领导', title: '党委副书记' },
+  { id: 'p-li-dir', name: '李总（执行董事）', dept: '集团领导', title: '执行董事' },
+  { id: 'p-zhang-ops', name: '张副总（运营）', dept: '集团领导', title: '副总经理（运营）' },
+  { id: 'p-zhang-dir', name: '张董事', dept: '董事会', title: '董事' },
+  { id: 'p-wang-ind', name: '王独立董事', dept: '董事会', title: '独立董事' },
+  { id: 'p-chen-ind', name: '陈独立董事', dept: '董事会', title: '独立董事' },
+  { id: 'p-board-sec', name: '董事会秘书', dept: '董事会办公室', title: '董事会秘书' },
+  { id: 'p-disc', name: '纪委书记', dept: '纪委', title: '纪委书记' },
+  { id: 'p-org', name: '组织部长', dept: '党委工作部', title: '组织部长' },
+  { id: 'p-pub', name: '宣传部长', dept: '党委工作部', title: '宣传部长' },
+  { id: 'p-wang-assist', name: '王总助', dept: '集团办公室', title: '总经理助理' },
+  { id: 'p-li-sec', name: '李秘书', dept: '集团办公室', title: '秘书' },
+  { id: 'p-zhou-clerk', name: '周文员', dept: '集团办公室', title: '文员' },
+  { id: 'p-chen-assist', name: '陈助理', dept: '战略发展部', title: '部门助理' },
+  { id: 'p-fin-chief', name: '财务部长', dept: '财务本部', title: '部长' },
+  { id: 'p-strat-chief', name: '战略部长', dept: '战略发展部', title: '部长' },
+  { id: 'p-office-dir', name: '办公室主任', dept: '集团办公室', title: '主任' },
+  { id: 'p-vp', name: '分管副总', dept: '集团领导', title: '分管副总经理' },
+  { id: 'p-pm', name: '项目负责人', dept: '综合室', title: '项目负责人' },
+  { id: 'p-dept-heads', name: '各部门主要负责人', dept: '各业务部门', title: '部门负责人' },
+  { id: 'p-biz-heads', name: '各业务板块负责人', dept: '各业务板块', title: '板块负责人' },
+  { id: 'p-related-heads', name: '相关部门负责人', dept: '相关部门', title: '部门负责人' },
+  { id: 'p-lijg', name: '李建国', dept: '战略发展部', title: '战略经理' },
+  { id: 'p-zhm', name: '张慧敏', dept: '信息技术部', title: '数字化项目经理' },
+  { id: 'p-wf', name: '王芳', dept: '人力资源部', title: '薪酬绩效主管' },
+  { id: 'p-czy', name: '陈志远', dept: '投资发展部', title: '投资经理' },
+  { id: 'p-lm', name: '刘明', dept: '合规法务部', title: '合规专员' },
+  { id: 'p-zgd', name: '赵国栋', dept: '华东大区', title: '大区总经理' },
+  { id: 'p-slh', name: '孙丽华', dept: '采购管理部', title: '采购主管' },
+  { id: 'p-zjp', name: '周建平', dept: '安全环保部', title: '安全主管' },
+  { id: 'p-liu-acc', name: '财务本部 刘会计', dept: '财务本部', title: '会计' },
+  { id: 'p-zhou-wei', name: '品牌公关部 周薇', dept: '品牌公关部', title: '公关经理' },
+  { id: 'p-chen-jian', name: '纪委办公室 陈监察', dept: '纪委办公室', title: '监察专员' },
+  { id: 'p-wu', name: '变革与流程管理办公室 吴工', dept: '变革与流程管理办公室', title: '流程工程师' },
+  { id: 'p-lin', name: '董办 林秘', dept: '董事会办公室', title: '秘书' },
+  { id: 'p-qian', name: '战略本部 钱策', dept: '战略本部', title: '战略专员' },
+]
+
+function findPerson(name: string) {
+  return PERSON_DIRECTORY.find(p => p.name === name)
+}
+
+function personLabel(name: string) {
+  const p = findPerson(name)
+  return p ? `${p.name} · ${p.dept} · ${p.title}` : name
+}
+
+const INIT_ROLES: RoleDef[] = [
+  {
+    id: 'admin', name: '统筹管理员', desc: '可维护角色与会议类型，查看全部会议数据',
+    dept: '集团办公室', avatar: '办', scope: null,
+    modules: ALL_ROLE_MODULES.map(m => m.id),
+    members: ['王总助'],
+    enabled: true, isManager: true, isSystem: true,
+  },
+  {
+    id: 'gm-office', name: '总经办管理员', desc: '仅管理总经办相关统计、议题、会议、纪要与交办',
+    dept: '集团办公室', avatar: '总', scope: '总经办',
+    modules: BUSINESS_MODULES,
+    members: ['李秘书', '周文员'],
+    enabled: true, isManager: true, isSystem: true,
+  },
+  {
+    id: 'ops', name: '经营管理会管理员', desc: '仅管理经营管理会相关统计、议题、会议、纪要与交办',
+    dept: '战略发展部', avatar: '经', scope: '经营管理会',
+    modules: BUSINESS_MODULES,
+    members: ['陈助理'],
+    enabled: true, isManager: true, isSystem: true,
+  },
+]
+
+function roleDef(role: UserRole, roles: RoleDef[] = INIT_ROLES) {
+  return roles.find(r => r.id === role)
+}
+
+function roleIsManager(role: UserRole, roles: RoleDef[] = INIT_ROLES) {
+  if (role === EMPLOYEE_ROLE_ID) return false
+  return roleDef(role, roles)?.isManager ?? false
+}
+
+function roleScopeCategory(role: UserRole, roles: RoleDef[] = INIT_ROLES): MeetingTypeCategory | null {
+  if (role === EMPLOYEE_ROLE_ID) return null
+  return roleDef(role, roles)?.scope ?? null
+}
+
+function categoryForTopic(topic: Topic): MeetingTypeCategory {
+  return topic.topicKind === '经营管理会议题' ? '经营管理会' : '总经办'
+}
+
+function categoryForMeeting(meeting: Meeting, types: MeetingTypeDef[]): MeetingTypeCategory | null {
+  return types.find(t => t.id === meeting.typeId)?.category ?? null
+}
+
+function topicInRoleScope(topic: Topic, role: UserRole, roles: RoleDef[] = INIT_ROLES, userName = ''): boolean {
+  if (!roleIsManager(role, roles)) {
+    if (!userName) return false
+    return topic.submitter === userName || topic.presenter === userName
+  }
+  const scope = roleScopeCategory(role, roles)
+  return !scope || categoryForTopic(topic) === scope
+}
+
+function meetingInRoleScope(meeting: Meeting, role: UserRole, types: MeetingTypeDef[], roles: RoleDef[] = INIT_ROLES): boolean {
+  if (!roleIsManager(role, roles)) return false
+  const scope = roleScopeCategory(role, roles)
+  if (!scope) return true
+  return categoryForMeeting(meeting, types) === scope
+}
+
+function meetingTypeInRoleScope(type: MeetingTypeDef, role: UserRole, roles: RoleDef[] = INIT_ROLES): boolean {
+  if (!roleIsManager(role, roles)) return false
+  const scope = roleScopeCategory(role, roles)
+  return !scope || type.category === scope
+}
+
+function actionInRoleScope(action: ActionItem, role: UserRole, meetings: Meeting[], types: MeetingTypeDef[], roles: RoleDef[] = INIT_ROLES): boolean {
+  if (!roleIsManager(role, roles)) return false
+  const meeting = meetings.find(m => m.id === action.meetingId)
+  if (!meeting) return roleScopeCategory(role, roles) === null
+  return meetingInRoleScope(meeting, role, types, roles)
+}
+
+function roleCanAccess(role: UserRole, section: NavSection, roles: RoleDef[] = INIT_ROLES): boolean {
+  // 议题申报：凡进入系统的人都能进，不依赖角色配置
+  if (section === 'topics') return true
+  if (role === EMPLOYEE_ROLE_ID) return false
+  const def = roleDef(role, roles)
+  if (!def?.enabled) return false
+  if (section === 'roles') return def.isManager && roleScopeCategory(role, roles) === null
+  return def.modules.includes(section)
+}
+
+const PermissionContext = createContext<{
+  role: UserRole
+  setRole: React.Dispatch<React.SetStateAction<UserRole>>
+  roles: RoleDef[]
+  setRoles: React.Dispatch<React.SetStateAction<RoleDef[]>>
+  userName: string
+  setUserName: React.Dispatch<React.SetStateAction<string>>
+}>({ role: 'admin', setRole: () => {}, roles: INIT_ROLES, setRoles: () => {}, userName: '王总助', setUserName: () => {} })
+
+function usePermission() {
+  return useContext(PermissionContext)
 }
 
 function normalizeTitle(s: string) {
@@ -187,49 +439,6 @@ function findSimilarTopics(title: string, topics: Topic[], excludeId?: string) {
 }
 
 const MEETING_ORG_DEPTS = ['集团办公室', '党委办公室', '董事会办公室', '战略发展部', '人力资源部', '综合室']
-
-// ─── Attendee Groups ──────────────────────────────────────────────────────────
-
-interface AttendeeGroup {
-  id: string
-  name: string
-  desc: string
-  typeIds: string[]   // which meeting types this group suits
-  members: string[]
-}
-
-const INIT_ATTENDEE_GROUPS: AttendeeGroup[] = [
-  {
-    id: 'AG001', name: '总经理办公会常规组',
-    desc: '适用于总经理办公会、专题会议',
-    typeIds: ['gac-gm-office', 'gz-industry-special'],
-    members: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '王总助', '各部门主要负责人'],
-  },
-  {
-    id: 'AG002', name: '党委会核心成员组',
-    desc: '适用于党委会',
-    typeIds: ['gac-industry-party', 'gac-party'],
-    members: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长'],
-  },
-  {
-    id: 'AG003', name: '董事会成员组',
-    desc: '适用于董事会',
-    typeIds: ['gac-industry-board', 'gac-board'],
-    members: ['马总（董事长）', '李总（执行董事）', '张董事', '王独立董事', '陈独立董事', '董事会秘书'],
-  },
-  {
-    id: 'AG004', name: '经营分析会核心组',
-    desc: '适用于经营分析会',
-    typeIds: ['gac-gm-office'],
-    members: ['马总（集团总经理）', '李副总（常务）', '财务部长', '战略部长', '各业务板块负责人'],
-  },
-  {
-    id: 'AG005', name: '协调推进会工作组',
-    desc: '适用于跨部门协调推进会',
-    typeIds: ['gz-industry-special'],
-    members: ['分管副总', '项目负责人', '相关部门负责人', '办公室主任'],
-  },
-]
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
@@ -414,7 +623,23 @@ const INIT_MEETINGS: Meeting[] = [
       { topicId: 'T003', order: 1 },
       { topicId: 'T004', order: 2 },
     ],
-    status: '筹备中',
+    status: '进行中',
+    notes: '',
+  },
+  {
+    id: 'M2026-08B',
+    title: '集团2026年8月经营调度会',
+    typeId: 'ops-dispatch',
+    date: '2026-08-28', time: '09:30', endTime: '11:30',
+    location: '总部大厦26层第二会议室',
+    chair: '张副总（运营）',
+    attendees: ['张副总（运营）', '王总助', '李建国', '各业务板块负责人'],
+    observers: ['变革与流程管理办公室 吴工'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '战略发展部',
+    meetingTopics: [{ topicId: 'T001', order: 1 }],
+    status: '进行中',
     notes: '',
   },
   {
@@ -542,6 +767,7 @@ const ACTIONS: ActionItem[] = [
 
 const MEETING_TITLE_MAP: Record<string, string> = {
   'M2026-08': '集团2026年8月总经理办公会',
+  'M2026-08B': '集团2026年8月经营调度会',
   'M2026-08C': '数字化转型三期项目协调推进会',
   'M2026-07': '集团2026年7月总经理办公会',
   'M2026-06': '2026年6月安全生产专题会',
@@ -714,40 +940,177 @@ function Field({ label, required, children }: { label: string; required?: boolea
   )
 }
 
+function PersonPickerModal({
+  title = '选择人员',
+  multiple = false,
+  selected,
+  onClose,
+  onConfirm,
+}: {
+  title?: string
+  multiple?: boolean
+  selected: string[]
+  onClose: () => void
+  onConfirm: (names: string[]) => void
+}) {
+  const [q, setQ] = useState('')
+  const [picked, setPicked] = useState<string[]>(selected)
+
+  const filtered = PERSON_DIRECTORY.filter(p => {
+    const key = q.trim()
+    if (!key) return true
+    return p.name.includes(key) || p.dept.includes(key) || p.title.includes(key)
+  })
+
+  const toggle = (name: string) => {
+    if (multiple) {
+      setPicked(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name])
+      return
+    }
+    onConfirm([name])
+  }
+
+  return (
+    <ModalShell
+      title={title}
+      kicker={multiple ? `已选 ${picked.length} 人` : '按姓名 / 部门 / 岗位搜索'}
+      width={560}
+      zIndex={1200}
+      onClose={onClose}
+      footer={
+        multiple ? (
+          <ModalFoot>
+            <Btn label="取消" variant="ghost" onClick={onClose} />
+            <Btn label={`确认选择（${picked.length}）`} variant="primary" onClick={() => onConfirm(picked)} />
+          </ModalFoot>
+        ) : (
+          <ModalFoot><Btn label="关闭" variant="ghost" onClick={onClose} /></ModalFoot>
+        )
+      }
+    >
+      <input
+        className="field-input"
+        autoFocus
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        placeholder="输入姓名、部门或岗位搜索"
+        style={{ marginBottom: 12 }}
+      />
+      <div style={{ maxHeight: 360, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+        {filtered.length === 0 && (
+          <div className="empty" style={{ padding: 28 }}>未找到匹配人员</div>
+        )}
+        {filtered.map(p => {
+          const on = picked.includes(p.name)
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => toggle(p.name)}
+              style={{
+                width: '100%', textAlign: 'left', display: 'flex', gap: 12, alignItems: 'center',
+                padding: '12px 14px', border: 'none', borderBottom: '1px solid var(--border)',
+                background: on ? 'var(--secondary)' : '#fff', cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: on ? 'var(--primary)' : 'var(--muted)', color: on ? '#fff' : 'var(--primary)', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {p.name.slice(0, 1)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: on ? 'var(--primary)' : 'var(--foreground)' }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 2 }}>{p.dept} · {p.title}</div>
+              </div>
+              {on && <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>已选</span>}
+            </button>
+          )
+        })}
+      </div>
+    </ModalShell>
+  )
+}
+
+function PersonField({ label, value, onChange, required, disabled, placeholder, note }: {
+  label?: string
+  value: string
+  onChange: (name: string) => void
+  required?: boolean
+  disabled?: boolean
+  placeholder?: string
+  note?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const person = findPerson(value)
+  const control = (
+    <>
+      <button
+        type="button"
+        className="field-input"
+        disabled={disabled}
+        onClick={() => { if (!disabled) setOpen(true) }}
+        style={{
+          textAlign: 'left', cursor: disabled ? 'default' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          color: value ? 'var(--foreground)' : 'var(--muted-foreground)',
+          opacity: disabled ? 0.7 : 1,
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {value
+            ? (person ? `${person.name} · ${person.dept} · ${person.title}` : value)
+            : (placeholder ?? '点击选择人员')}
+        </span>
+        {!disabled && <span style={{ color: 'var(--muted-foreground)', flexShrink: 0 }}>{value ? '更换' : '选择'}</span>}
+      </button>
+      {value && !disabled && (
+        <button type="button" onClick={() => onChange('')} style={{ marginTop: 6, background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>清除</button>
+      )}
+      {note && <div className="field-note">{note}</div>}
+      {open && (
+        <PersonPickerModal
+          title={`选择${label || '人员'}`}
+          selected={value ? [value] : []}
+          onClose={() => setOpen(false)}
+          onConfirm={names => { onChange(names[0] ?? ''); setOpen(false) }}
+        />
+      )}
+    </>
+  )
+  if (!label) return <div>{control}</div>
+  return <Field label={label} required={required}>{control}</Field>
+}
+
 function NameChipField({ label, names, onChange, placeholder }: {
   label: string
   names: string[]
   onChange: (next: string[]) => void
   placeholder?: string
 }) {
-  const [input, setInput] = useState('')
-  const add = () => {
-    const v = input.trim()
-    if (v && !names.includes(v)) { onChange([...names, v]); setInput('') }
-  }
+  const [open, setOpen] = useState(false)
   return (
     <Field label={`${label}（${names.length}人）`}>
       {names.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, padding: 10, background: 'var(--muted)', borderRadius: 6 }}>
-          {names.map(a => (
-            <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#fff', border: '1px solid var(--border)', borderRadius: 4, fontSize: 12 }}>
-              {a}
-              <button type="button" onClick={() => onChange(names.filter(x => x !== a))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
-            </span>
-          ))}
+          {names.map(a => {
+            const p = findPerson(a)
+            return (
+              <span key={a} title={personLabel(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#fff', border: '1px solid var(--border)', borderRadius: 4, fontSize: 12 }}>
+                {a}{p ? <span style={{ color: 'var(--muted-foreground)' }}>·{p.dept}</span> : null}
+                <button type="button" onClick={() => onChange(names.filter(x => x !== a))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
+              </span>
+            )
+          })}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          className="field-input"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
-          placeholder={placeholder ?? '输入姓名后按 Enter 添加'}
-          style={{ flex: 1 }}
+      <Btn label={placeholder ?? '选择人员'} variant="secondary" onClick={() => setOpen(true)} />
+      {open && (
+        <PersonPickerModal
+          title={`选择${label}`}
+          multiple
+          selected={names}
+          onClose={() => setOpen(false)}
+          onConfirm={next => { onChange(next); setOpen(false) }}
         />
-        <Btn label="添加" variant="secondary" onClick={add} />
-      </div>
+      )}
     </Field>
   )
 }
@@ -769,7 +1132,8 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
   defaultTypeId?: string
 }) {
   const { meetingTypes } = useMeetingCatalog()
-  const enabledTypes = meetingTypes.filter(t => t.enabled)
+  const { role, roles } = usePermission()
+  const enabledTypes = meetingTypes.filter(t => t.enabled && meetingTypeInRoleScope(t, role, roles))
   const typeMeta = enabledTypes.find(t => t.id === defaultTypeId) ?? enabledTypes[0] ?? INIT_MEETING_TYPES[0]
   const [typeId, setTypeId] = useState(typeMeta.id)
   const [title, setTitle] = useState(typeMeta.name)
@@ -777,26 +1141,22 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
   const [time, setTime] = useState('09:00')
   const [endTime, setEndTime] = useState('12:00')
   const [location, setLocation] = useState('总部大厦28层第一会议室')
-  const [chair, setChair] = useState('马总（集团总经理）')
+  const [chair, setChair] = useState(typeMeta.usualChair || '马总（集团总经理）')
   const [organizer, setOrganizer] = useState('王总助')
   const [organizeDept, setOrganizeDept] = useState('集团办公室')
   const [attendees, setAttendees] = useState<string[]>([])
   const [observers, setObservers] = useState<string[]>([])
   const [disciplineStaff, setDisciplineStaff] = useState<string[]>([])
-  const [attendeeInput, setAttendeeInput] = useState('')
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
+  const [showAttendeePicker, setShowAttendeePicker] = useState(false)
 
-  const suggestedGroups = INIT_ATTENDEE_GROUPS.filter(g => g.typeIds.includes(typeId))
+  const selectedType = meetingTypes.find(t => t.id === typeId) ?? typeMeta
 
-  const applyGroup = (g: AttendeeGroup) => {
-    setActiveGroupId(g.id)
-    setAttendees(g.members)
-  }
-
-  const addAttendee = () => {
-    const v = attendeeInput.trim()
-    if (v && !attendees.includes(v)) { setAttendees(a => [...a, v]); setAttendeeInput('') }
-  }
+  useEffect(() => {
+    setAttendees(selectedType.usualAttendees)
+    setObservers(selectedType.usualObservers)
+    setDisciplineStaff(selectedType.usualDiscipline)
+    if (selectedType.usualChair) setChair(selectedType.usualChair)
+  }, [typeId, meetingTypes])
 
   const handleSave = () => {
     const id = `M${date.replace(/-/g, '').slice(0, 6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
@@ -828,7 +1188,7 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
               key={t.id}
               type="button"
               className={`choice${typeId === t.id ? ' is-on' : ''}`}
-              onClick={() => { setTypeId(t.id); setActiveGroupId(null); setTitle(t.name) }}
+              onClick={() => { setTypeId(t.id); setTitle(t.name) }}
             >
               {t.name}
             </button>
@@ -855,14 +1215,19 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
       <Field label="会议地点">
         <input className="field-input" value={location} onChange={e => setLocation(e.target.value)} placeholder="如：总部大厦28层第一会议室" />
       </Field>
-      <Field label="主持人">
-        <input className="field-input" value={chair} onChange={e => setChair(e.target.value)} placeholder="如：马总（集团总经理）" />
-      </Field>
+      <PersonField label="主持人" value={chair} onChange={setChair} placeholder="点击选择主持人" />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="会议组织人">
-          <input className="field-input" value={organizer} onChange={e => setOrganizer(e.target.value)} placeholder="如：王总助" />
-        </Field>
+        <PersonField
+          label="会议组织人"
+          value={organizer}
+          onChange={name => {
+            setOrganizer(name)
+            const p = findPerson(name)
+            if (p && MEETING_ORG_DEPTS.includes(p.dept)) setOrganizeDept(p.dept)
+          }}
+          placeholder="点击选择组织人"
+        />
         <Field label="组织部门">
           <select className="field-select" value={organizeDept} onChange={e => setOrganizeDept(e.target.value)}>
             {MEETING_ORG_DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -871,65 +1236,49 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
       </div>
 
       <Field label={`参会人员（${attendees.length}人）`}>
-        {suggestedGroups.length > 0 && (
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 8 }}>常用人员组，点击导入</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {suggestedGroups.map(g => (
-                <button
-                  key={g.id}
-                  type="button"
-                  className={`choice${activeGroupId === g.id ? ' is-on' : ''}`}
-                  style={{ minHeight: 32, width: 'auto', padding: '4px 10px', flex: '0 0 auto' }}
-                  onClick={() => applyGroup(g)}
-                >
-                  {g.name}
-                </button>
-              ))}
-            </div>
-            {activeGroupId && (
-              <div style={{ fontSize: 12, color: '#2f5d4a', marginTop: 8 }}>
-                已导入「{INIT_ATTENDEE_GROUPS.find(g => g.id === activeGroupId)?.name}」，可继续增删
-              </div>
-            )}
+        {(selectedType.usualAttendees.length > 0 || selectedType.usualObservers.length > 0 || selectedType.usualDiscipline.length > 0) && (
+          <div style={{ fontSize: 12, color: '#2f5d4a', marginBottom: 8 }}>
+            已按「{selectedType.name}」常见人员自动带入，可继续增删
           </div>
         )}
         {attendees.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, padding: 10, background: 'var(--muted)', borderRadius: 6 }}>
-            {attendees.map(a => (
-              <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#fff', border: '1px solid var(--border)', borderRadius: 4, fontSize: 12 }}>
-                {a}
-                <button type="button" onClick={() => setAttendees(prev => prev.filter(x => x !== a))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
-              </span>
-            ))}
-            <button type="button" onClick={() => { setAttendees([]); setActiveGroupId(null) }} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}>清空</button>
+            {attendees.map(a => {
+              const p = findPerson(a)
+              return (
+                <span key={a} title={personLabel(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#fff', border: '1px solid var(--border)', borderRadius: 4, fontSize: 12 }}>
+                  {a}{p ? <span style={{ color: 'var(--muted-foreground)' }}>·{p.dept}</span> : null}
+                  <button type="button" onClick={() => setAttendees(prev => prev.filter(x => x !== a))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
+                </span>
+              )
+            })}
+            <button type="button" onClick={() => setAttendees([])} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}>清空</button>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            className="field-input"
-            value={attendeeInput}
-            onChange={e => setAttendeeInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addAttendee()}
-            placeholder="输入姓名后按 Enter 临时加人"
-            style={{ flex: 1 }}
-          />
-          <Btn label="添加" variant="secondary" onClick={addAttendee} />
-        </div>
+        <Btn label="选择参会人员" variant="secondary" onClick={() => setShowAttendeePicker(true)} />
       </Field>
 
       <NameChipField
         label="列席人员"
         names={observers}
         onChange={setObservers}
-        placeholder="输入列席人员姓名后按 Enter 添加"
+        placeholder="选择列席人员"
       />
       <NameChipField
         label="纪检部门人员"
         names={disciplineStaff}
         onChange={setDisciplineStaff}
-        placeholder="输入纪检人员姓名后按 Enter 添加"
+        placeholder="选择纪检人员"
       />
+      {showAttendeePicker && (
+        <PersonPickerModal
+          title="选择参会人员"
+          multiple
+          selected={attendees}
+          onClose={() => setShowAttendeePicker(false)}
+          onConfirm={names => { setAttendees(names); setShowAttendeePicker(false) }}
+        />
+      )}
     </ModalShell>
   )
 }
@@ -1124,7 +1473,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
   setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
   onBack: () => void
   onUpdate: (m: Meeting) => void
-  onNav: (s: NavSection) => void
+  onNav: (s: NavSection, meetingId?: string) => void
 }) {
   const [showPicker, setShowPicker] = useState(false)
   const [actionToast, setActionToast] = useState('')
@@ -1409,7 +1758,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
               />
 
               {meeting.status === '筹备中' && (
-                <Btn label="开始会议" variant="primary" onClick={() => onNav('meeting-live')} />
+                <Btn label="开始会议" variant="primary" onClick={() => onNav('meeting-live', meeting.id)} />
               )}
             </div>
           </Card>
@@ -1510,7 +1859,7 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onNew, on
   onBack: () => void
   onDetail: (id: string) => void
   onNew: () => void
-  onNav: (s: NavSection) => void
+  onNav: (s: NavSection, meetingId?: string) => void
 }) {
   const { meetingTypes } = useMeetingCatalog()
   const typeMeta = meetingTypes.find(t => t.id === typeId) ?? INIT_MEETING_TYPES.find(t => t.id === typeId)
@@ -1588,7 +1937,7 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onNew, on
               )}
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
                 <Btn label="查看/编辑" variant="secondary" small onClick={() => onDetail(m.id)} />
-                {m.status !== '已结束' && <Btn label="进入会中" variant="primary" small onClick={() => onNav('meeting-live')} />}
+                {m.status !== '已结束' && <Btn label="进入会中" variant="primary" small onClick={() => onNav('meeting-live', m.id)} />}
                 {m.status === '已结束' && <Btn label="查看纪要" variant="ghost" small onClick={() => onNav('minutes')} />}
               </div>
             </div>
@@ -1599,15 +1948,23 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onNew, on
   )
 }
 
-function MeetingsView({ topics, setTopics, onNav }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>>; onNav: (s: NavSection) => void }) {
+function MeetingsView({ topics, setTopics, meetings, setMeetings, onNav }: {
+  topics: Topic[]
+  setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
+  meetings: Meeting[]
+  setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>
+  onNav: (s: NavSection, meetingId?: string) => void
+}) {
   const { meetingTypes } = useMeetingCatalog()
-  const gridTypes = meetingTypes.filter(t => t.enabled)
-  const [meetings, setMeetings] = useState<Meeting[]>(INIT_MEETINGS)
+  const { role, roles } = usePermission()
+  const gridTypes = meetingTypes.filter(t => t.enabled && meetingTypeInRoleScope(t, role, roles))
   const [showNew, setShowNew] = useState(false)
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
 
-  const detailMeeting = meetings.find(m => m.id === detailId) ?? null
+  const scopedMeetings = meetings.filter(m => meetingInRoleScope(m, role, meetingTypes, roles))
+
+  const detailMeeting = scopedMeetings.find(m => m.id === detailId) ?? null
   const updateMeeting = (updated: Meeting) => setMeetings(prev => prev.map(m => m.id === updated.id ? updated : m))
   const addMeeting = (m: Meeting) => setMeetings(prev => [m, ...prev])
 
@@ -1636,7 +1993,7 @@ function MeetingsView({ topics, setTopics, onNav }: { topics: Topic[]; setTopics
         )}
         <MeetingTypeList
           typeId={selectedTypeId}
-          meetings={meetings}
+          meetings={scopedMeetings}
           topics={topics}
           onBack={() => setSelectedTypeId(null)}
           onDetail={id => setDetailId(id)}
@@ -1660,7 +2017,7 @@ function MeetingsView({ topics, setTopics, onNav }: { topics: Topic[]; setTopics
 
       <div className="type-grid">
         {gridTypes.map((type, i) => {
-          const typeMeetings = meetings.filter(m => m.typeId === type.id)
+          const typeMeetings = scopedMeetings.filter(m => m.typeId === type.id)
           const statusOrder: MeetingStatus[] = ['进行中', '筹备中', '已结束']
           const latest = [...typeMeetings].sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status))[0]
           const allAttendees = latest?.attendees ?? []
@@ -1732,38 +2089,47 @@ function ProgressRing({ pct, color, center }: { pct: number; color: string; cent
   )
 }
 
-function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => void; topics?: Topic[] }) {
+function Dashboard({ onNav, topics = INIT_TOPICS, meetings = INIT_MEETINGS }: {
+  onNav: (s: NavSection, meetingId?: string) => void
+  topics?: Topic[]
+  meetings?: Meeting[]
+}) {
   const { meetingTypes } = useMeetingCatalog()
+  const { role, roles, userName } = usePermission()
+  const scope = roleScopeCategory(role, roles)
+  const scopedMeetings = meetings.filter(m => meetingInRoleScope(m, role, meetingTypes, roles))
+  const scopedTopics = topics.filter(t => topicInRoleScope(t, role, roles, userName))
+  const scopedActions = ACTIONS.filter(a => actionInRoleScope(a, role, meetings, meetingTypes, roles))
+  const scopedTypes = meetingTypes.filter(t => meetingTypeInRoleScope(t, role, roles))
   const asOf = '2026-08-28'
   const monthKey = asOf.slice(0, 7)
-  const meetings = INIT_MEETINGS
-  const monthMeetings = meetings.filter(m => m.date.startsWith(monthKey))
-  const ended = meetings.filter(m => m.status === '已结束')
+  const monthMeetings = scopedMeetings.filter(m => m.date.startsWith(monthKey))
+  const ended = scopedMeetings.filter(m => m.status === '已结束')
   const archived = ended.filter(m => INIT_MINUTES[m.id])
   const pendingMinutes = ended.filter(m => !INIT_MINUTES[m.id])
   const archiveRate = ended.length ? Math.round((archived.length / ended.length) * 100) : 0
-  const finishRate = meetings.length ? Math.round((ended.length / meetings.length) * 100) : 0
+  const finishRate = scopedMeetings.length ? Math.round((ended.length / scopedMeetings.length) * 100) : 0
 
   const topicFlow: { key: TopicStatus; n: number }[] = (['待安排', '已安排', '锁定中', '已上会'] as TopicStatus[]).map(key => ({
-    key, n: topics.filter(t => t.status === key).length,
+    key, n: scopedTopics.filter(t => t.status === key).length,
   }))
   const topicPending = topicFlow[0].n
-  const topicMoved = topics.length - topicPending
-  const topicRate = topics.length ? Math.round((topicMoved / topics.length) * 100) : 0
+  const topicMoved = scopedTopics.length - topicPending
+  const topicRate = scopedTopics.length ? Math.round((topicMoved / scopedTopics.length) * 100) : 0
 
   const actionN = {
-    跟进中: ACTIONS.filter(a => a.status === '跟进中').length,
-    待确认关闭: ACTIONS.filter(a => a.status === '待确认关闭').length,
-    已关闭: ACTIONS.filter(a => a.status === '已关闭').length,
+    跟进中: scopedActions.filter(a => a.status === '跟进中').length,
+    待确认关闭: scopedActions.filter(a => a.status === '待确认关闭').length,
+    已关闭: scopedActions.filter(a => a.status === '已关闭').length,
   }
   const inProgress = actionN.跟进中 + actionN.待确认关闭
-  const closeRate = ACTIONS.length ? Math.round((actionN.已关闭 / ACTIONS.length) * 100) : 0
-  const overdue = ACTIONS.filter(a => a.status !== '已关闭' && a.deadline < asOf)
-  const dueSoon = ACTIONS.filter(a => a.status === '跟进中' && a.deadline >= asOf && a.deadline <= '2026-09-07')
+  const closeRate = scopedActions.length ? Math.round((actionN.已关闭 / scopedActions.length) * 100) : 0
+  const overdue = scopedActions.filter(a => a.status !== '已关闭' && a.deadline < asOf)
+  const dueSoon = scopedActions.filter(a => a.status === '跟进中' && a.deadline >= asOf && a.deadline <= '2026-09-07')
   const actionMax = Math.max(...Object.values(actionN), 1)
 
-  const typeRows = meetingTypes.map(type => {
-    const list = meetings.filter(m => m.typeId === type.id)
+  const typeRows = scopedTypes.map(type => {
+    const list = scopedMeetings.filter(m => m.typeId === type.id)
     if (list.length === 0) return null
     const done = list.filter(m => m.status === '已结束')
     return {
@@ -1777,15 +2143,15 @@ function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => 
 
   const alerts = [
     ...pendingMinutes.map(m => ({ id: m.id, kind: '纪要未归档', title: m.title, extra: `${m.date} 已结束`, go: 'minutes' as NavSection })),
-    ...ACTIONS.filter(a => a.status === '待确认关闭').map(a => ({ id: a.id, kind: '待确认关闭', title: a.title, extra: `${a.assignee} · 截止 ${a.deadline}`, go: 'actions' as NavSection })),
+    ...ACTIONS.filter(a => a.status === '待确认关闭' && actionInRoleScope(a, role, meetings, meetingTypes, roles)).map(a => ({ id: a.id, kind: '待确认关闭', title: a.title, extra: `${a.assignee} · 截止 ${a.deadline}`, go: 'actions' as NavSection })),
     ...dueSoon.map(a => ({ id: a.id, kind: '即将到期', title: a.title, extra: `${a.assignee} · 截止 ${a.deadline}`, go: 'actions' as NavSection })),
     ...overdue.map(a => ({ id: a.id, kind: '已逾期', title: a.title, extra: `${a.assignee} · 截止 ${a.deadline}`, go: 'actions' as NavSection })),
   ]
 
   const kpis = [
-    { label: '会议办结率', value: `${finishRate}%`, tag: `本年 ${meetings.length} 场`, tone: 'navy', sub: `本月 ${monthMeetings.length} 场 · 已结束 ${ended.length} · 筹备中 ${meetings.length - ended.length}`, pct: finishRate, ring: `${finishRate}%`, color: '#1b365d', go: 'meetings' as NavSection },
+    { label: '会议办结率', value: `${finishRate}%`, tag: `本年 ${scopedMeetings.length} 场`, tone: 'navy', sub: `本月 ${monthMeetings.length} 场 · 已结束 ${ended.length} · 筹备中 ${scopedMeetings.length - ended.length}`, pct: finishRate, ring: `${finishRate}%`, color: '#1b365d', go: 'meetings' as NavSection },
     { label: '纪要归档率', value: `${archiveRate}%`, tag: pendingMinutes.length ? `待归档 ${pendingMinutes.length}` : '已清零', tone: pendingMinutes.length ? 'gold' : 'ok', sub: `已结束 ${ended.length} 场，已归档 ${archived.length} 场`, pct: archiveRate, ring: `${archiveRate}%`, color: '#c4a35a', go: 'minutes' as NavSection },
-    { label: '议题排期率', value: `${topicRate}%`, tag: `待安排 ${topicPending}`, tone: 'gold', sub: `申报 ${topics.length} 项 · 已进入排期 ${topicMoved} 项`, pct: topicRate, ring: `${topicRate}%`, color: '#8a5a2b', go: 'topics' as NavSection },
+    { label: '议题排期率', value: `${topicRate}%`, tag: `待安排 ${topicPending}`, tone: 'gold', sub: `申报 ${scopedTopics.length} 项 · 已进入排期 ${topicMoved} 项`, pct: topicRate, ring: `${topicRate}%`, color: '#8a5a2b', go: 'topics' as NavSection },
     { label: '交办办结率', value: `${closeRate}%`, tag: dueSoon.length ? `临期 ${dueSoon.length}` : '在办稳定', tone: dueSoon.length || overdue.length ? 'warn' : 'ok', sub: `在办 ${inProgress} · 已关闭 ${actionN.已关闭} · 逾期 ${overdue.length}`, pct: closeRate, ring: `${closeRate}%`, color: '#2f5d4a', go: 'actions' as NavSection },
   ]
 
@@ -1793,7 +2159,7 @@ function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => 
     <div>
       <SectionHeader
         title="智会驾驶舱"
-        subtitle={`统计周期 2026年1–8月 · 数据截至 ${asOf} · 集团总部`}
+        subtitle={`统计周期 2026年1–8月 · 数据截至 ${asOf}${scope ? ` · 仅显示${scope}数据` : ' · 集团总部'}`}
       />
 
       <div className="kpi-grid">
@@ -1816,7 +2182,7 @@ function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => 
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>议题流转</div>
-            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>申报 {topics.length} 项</span>
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>申报 {scopedTopics.length} 项</span>
           </div>
           <div className="funnel">
             {topicFlow.map((s, i) => (
@@ -1834,7 +2200,7 @@ function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => 
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC', serif" }}>交办构成</div>
-            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>共 {ACTIONS.length} 项</span>
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>共 {scopedActions.length} 项</span>
           </div>
           {([
             ['跟进中', actionN.跟进中, '#1b365d'],
@@ -2077,11 +2443,23 @@ function _SubmitTopicModal_UNUSED({ onClose, onSave }: {
                 </div>
                 <div>
                   <label style={labelStyle}>提报人 <span style={{ color: '#dc2626' }}>*</span></label>
-                  <input value={form.submitter} onChange={e => set('submitter', e.target.value)} placeholder="姓名" style={fieldStyle} />
+                  <PersonField
+                    value={form.submitter}
+                    onChange={name => {
+                      set('submitter', name)
+                      const p = findPerson(name)
+                      if (p && DEPTS.includes(p.dept)) set('dept', p.dept)
+                    }}
+                    placeholder="点击选择提报人"
+                  />
                 </div>
                 <div>
                   <label style={labelStyle}>汇报人</label>
-                  <input value={form.presenter} onChange={e => set('presenter', e.target.value)} placeholder="默认与提报人相同" style={fieldStyle} />
+                  <PersonField
+                    value={form.presenter}
+                    onChange={name => set('presenter', name)}
+                    placeholder="默认与提报人相同"
+                  />
                 </div>
                 <div>
                   <label style={labelStyle}>预计汇报时长（分钟）</label>
@@ -2249,6 +2627,219 @@ function _SubmitTopicModal_UNUSED({ onClose, onSave }: {
   )
 }
 
+// ─── Role Admin ───────────────────────────────────────────────────────────────
+
+function RoleModal({ item, onClose, onSave }: {
+  item: RoleDef | null
+  onClose: () => void
+  onSave: (r: RoleDef) => void
+}) {
+  const { roles } = usePermission()
+  const isCreate = item === null
+  const [form, setForm] = useState({
+    name: item?.name ?? '',
+    desc: item?.desc ?? '',
+    dept: item?.dept ?? '集团办公室',
+    avatar: item?.avatar ?? '角',
+    scope: (item?.scope ?? null) as MeetingTypeCategory | null,
+    modules: item?.modules ?? [...BUSINESS_MODULES],
+    members: item?.members ?? [],
+    enabled: item?.enabled ?? true,
+  })
+  const dup = roles.some(r => r.name === form.name.trim() && r.id !== item?.id)
+
+  const toggleModule = (id: RoleModule) => {
+    setForm(f => ({
+      ...f,
+      modules: f.modules.includes(id) ? f.modules.filter(x => x !== id) : [...f.modules, id],
+    }))
+  }
+
+  return (
+    <ModalShell
+      title={isCreate ? '新增角色' : '编辑角色'}
+      kicker="角色与权限"
+      width={640}
+      onClose={onClose}
+      footer={
+        <ModalFoot>
+          <Btn label="取消" variant="ghost" onClick={onClose} />
+          <Btn
+            label={isCreate ? '保存' : '保存修改'}
+            variant="primary"
+            disabled={!form.name.trim() || dup || form.modules.length === 0}
+            onClick={() => onSave({
+              id: item?.id ?? `role-${Date.now().toString(36)}`,
+              name: form.name.trim(),
+              desc: form.desc.trim(),
+              dept: form.dept.trim() || '集团办公室',
+              avatar: (form.avatar.trim() || form.name.trim().slice(0, 1) || '角').slice(0, 1),
+              scope: form.scope,
+              modules: Array.from(new Set(['topics', ...form.modules])) as RoleModule[],
+              members: form.members,
+              enabled: form.enabled,
+              isManager: true,
+              isSystem: item?.isSystem,
+            })}
+          />
+        </ModalFoot>
+      }
+    >
+      <Field label="角色名称" required>
+        <input className="field-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="如：总经办管理员" />
+        {dup && <div className="field-note" style={{ color: '#8b3a3a' }}>已存在同名角色</div>}
+      </Field>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="所属部门">
+          <input className="field-input" value={form.dept} onChange={e => setForm(f => ({ ...f, dept: e.target.value }))} placeholder="如：集团办公室" />
+        </Field>
+        <Field label="头像字">
+          <input className="field-input" value={form.avatar} maxLength={1} onChange={e => setForm(f => ({ ...f, avatar: e.target.value.slice(0, 1) }))} placeholder="一字" />
+        </Field>
+      </div>
+      <Field label="说明">
+        <input className="field-input" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="简述该角色职责与数据范围" />
+      </Field>
+      <div className="field-note" style={{ marginBottom: 12 }}>
+        角色管理只维护管理类权限。普通员工无需建角色，进入系统即可使用议题申报，且仅能看到本人数据。
+      </div>
+      <Field label="数据范围" required>
+        <div className="chip-pick">
+          <button type="button" className={form.scope === null ? 'is-on' : ''} onClick={() => setForm(f => ({ ...f, scope: null, modules: ALL_ROLE_MODULES.map(m => m.id) }))}>全部会议</button>
+          {(['总经办', '经营管理会'] as MeetingTypeCategory[]).map(c => (
+            <button
+              key={c}
+              type="button"
+              className={form.scope === c ? 'is-on' : ''}
+              onClick={() => setForm(f => ({
+                ...f,
+                scope: c,
+                modules: f.modules.filter(m => m !== 'meeting-types'),
+              }))}
+            >仅{c}</button>
+          ))}
+        </div>
+        <div className="field-note">决定驾驶舱、议题、会议、纪要、交办可见的会议分类</div>
+      </Field>
+      <Field label="可访问模块" required>
+        <div className="chip-pick" style={{ flexWrap: 'wrap' }}>
+          {ALL_ROLE_MODULES.map(m => {
+            const locked = form.scope !== null && m.id === 'meeting-types'
+            const on = form.modules.includes(m.id) || m.id === 'topics'
+            return (
+              <button
+                key={m.id}
+                type="button"
+                className={on ? 'is-on' : ''}
+                disabled={locked || m.id === 'topics'}
+                onClick={() => { if (!locked && m.id !== 'topics') toggleModule(m.id) }}
+                style={(locked || m.id === 'topics') ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+              >{m.label}</button>
+            )
+          })}
+        </div>
+        <div className="field-note">议题申报对全员开放，无需在角色中单独配置</div>
+      </Field>
+      <NameChipField
+        label="角色成员"
+        names={form.members}
+        onChange={names => setForm(f => ({ ...f, members: names }))}
+        placeholder="选择管理人员"
+      />
+    </ModalShell>
+  )
+}
+
+function RolesView() {
+  const { roles, setRoles, role, setRole, setUserName } = usePermission()
+  const [modal, setModal] = useState<RoleDef | null | 'new'>(null)
+  const [toast, setToast] = useState('')
+  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2800) }
+
+  const save = (saved: RoleDef) => {
+    setRoles(prev => prev.some(r => r.id === saved.id) ? prev.map(r => r.id === saved.id ? saved : r) : [...prev, saved])
+    setModal(null)
+    showToast(roles.some(r => r.id === saved.id) ? '角色已保存。' : '角色已新增。')
+  }
+
+  const toggle = (id: string) => {
+    if (id === role) { showToast('当前登录角色不可停用。'); return }
+    setRoles(prev => prev.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r))
+  }
+
+  const remove = (r: RoleDef) => {
+    if (r.isSystem) { showToast('系统预置角色不可删除，可停用。'); return }
+    if (r.id === role) { showToast('当前登录角色不可删除。'); return }
+    setRoles(prev => prev.filter(x => x.id !== r.id))
+    showToast('已删除角色。')
+  }
+
+  const switchTo = (r: RoleDef) => {
+    if (!r.enabled) { showToast('请先启用该角色。'); return }
+    setRole(r.id)
+    if (r.members[0]) setUserName(r.members[0])
+    showToast(`已切换为「${r.name}」体验。`)
+  }
+
+  return (
+    <div>
+      {modal !== null && (
+        <RoleModal
+          item={modal === 'new' ? null : modal}
+          onClose={() => setModal(null)}
+          onSave={save}
+        />
+      )}
+      {toast && <div className="toast">{toast}</div>}
+      <SectionHeader
+        title="角色管理"
+        subtitle="仅维护管理类角色（统筹 / 总经办 / 经营管理会等）。普通员工无需建角色，登录即可进入议题申报并仅见本人数据。"
+        action={<Btn label="+ 新增角色" variant="primary" onClick={() => setModal('new')} />}
+      />
+
+      <Card>
+        {roles.map(r => {
+          const scopeLabel = r.scope ? `仅${r.scope}` : '全部会议'
+          const moduleLabels = ALL_ROLE_MODULES.filter(m => r.modules.includes(m.id) || m.id === 'topics').map(m => m.label)
+          return (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--secondary)', color: 'var(--primary)', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{r.avatar}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{r.name}</span>
+                  <Badge label="管理类" color="bg-slate-50 text-slate-700 border border-slate-200" />
+                  {r.isSystem && <Badge label="系统预置" color="bg-slate-50 text-slate-600 border border-slate-200" />}
+                  {r.id === role && <Badge label="当前登录" color="bg-emerald-50 text-emerald-700 border border-emerald-200" />}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 6 }}>{r.desc || '—'}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+                  {r.dept} · 数据范围 {scopeLabel} · 模块 {moduleLabels.length} 个
+                  {r.members.length > 0 ? ` · 成员 ${r.members.join('、')}` : ' · 尚未分配成员'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+                  {moduleLabels.map(label => (
+                    <span key={label} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{label}</span>
+                  ))}
+                </div>
+              </div>
+              <Badge
+                label={r.enabled ? '启用' : '停用'}
+                color={r.enabled ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-500 border border-slate-200'}
+              />
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <Btn label="切换体验" variant="secondary" small onClick={() => switchTo(r)} />
+                <Btn label="编辑" variant="ghost" small onClick={() => setModal(r)} />
+                <Btn label={r.enabled ? '停用' : '启用'} variant="ghost" small onClick={() => toggle(r.id)} />
+                <Btn label="删除" variant="danger" small onClick={() => remove(r)} />
+              </div>
+            </div>
+          )
+        })}
+      </Card>
+    </div>
+  )
+}
+
 // ─── Meeting Type Admin ───────────────────────────────────────────────────────
 
 function MeetingTypeModal({ item, onClose, onSave }: {
@@ -2266,6 +2857,10 @@ function MeetingTypeModal({ item, onClose, onSave }: {
     color: item?.color ?? pal.color,
     bg: item?.bg ?? pal.bg,
     enabled: item?.enabled ?? true,
+    usualChair: item?.usualChair ?? '',
+    usualAttendees: item?.usualAttendees ?? [],
+    usualObservers: item?.usualObservers ?? [],
+    usualDiscipline: item?.usualDiscipline ?? [],
   })
   const dup = meetingTypes.some(t => t.name === form.name.trim() && t.id !== item?.id)
 
@@ -2273,7 +2868,7 @@ function MeetingTypeModal({ item, onClose, onSave }: {
     <ModalShell
       title={isCreate ? '新增会议类型' : '编辑会议类型'}
       kicker="会议类型字典"
-      width={560}
+      width={640}
       onClose={onClose}
       footer={
         <ModalFoot>
@@ -2290,6 +2885,10 @@ function MeetingTypeModal({ item, onClose, onSave }: {
               color: form.color,
               bg: form.bg,
               enabled: form.enabled,
+              usualChair: form.usualChair.trim(),
+              usualAttendees: form.usualAttendees,
+              usualObservers: form.usualObservers,
+              usualDiscipline: form.usualDiscipline,
             })}
           />
         </ModalFoot>
@@ -2309,6 +2908,31 @@ function MeetingTypeModal({ item, onClose, onSave }: {
       <Field label="说明">
         <input className="field-input" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="简要说明该会议类型用途" />
       </Field>
+      <PersonField
+        label="常见主持人"
+        value={form.usualChair}
+        onChange={name => setForm(f => ({ ...f, usualChair: name }))}
+        placeholder="点击选择常见主持人"
+        note="新建该类型会议时可一键带入"
+      />
+      <NameChipField
+        label="常见出席人员"
+        names={form.usualAttendees}
+        onChange={names => setForm(f => ({ ...f, usualAttendees: names }))}
+        placeholder="选择常见出席人员"
+      />
+      <NameChipField
+        label="常见列席人员"
+        names={form.usualObservers}
+        onChange={names => setForm(f => ({ ...f, usualObservers: names }))}
+        placeholder="选择常见列席人员"
+      />
+      <NameChipField
+        label="常见纪检部门人员"
+        names={form.usualDiscipline}
+        onChange={names => setForm(f => ({ ...f, usualDiscipline: names }))}
+        placeholder="选择常见纪检人员"
+      />
     </ModalShell>
   )
 }
@@ -2348,7 +2972,7 @@ function MeetingTypesView() {
       {toast && <div className="toast">{toast}</div>}
       <SectionHeader
         title="会议类型"
-        subtitle="维护系统会议类型字典。每一类型须归属于总经办或经营管理会，供议题申报与会议创建选用。"
+        subtitle="维护系统会议类型字典。每一类型须归属于总经办或经营管理会，并维护该类型常见出席人员，供新建会议时作为常用人员组一键导入。"
         action={<Btn label="+ 新增类型" variant="primary" onClick={() => setModal('new')} />}
       />
 
@@ -2367,6 +2991,13 @@ function MeetingTypesView() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 2 }}>{t.desc || '—'}</div>
+                  {t.usualAttendees.length > 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4 }}>
+                      常见出席 {t.usualAttendees.length} 人：{t.usualAttendees.slice(0, 4).join('、')}{t.usualAttendees.length > 4 ? '…' : ''}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#8a5a2b', marginTop: 4 }}>尚未维护常见出席人员</div>
+                  )}
                 </div>
                 <Badge
                   label={t.enabled ? '启用' : '停用'}
@@ -2398,6 +3029,8 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock }:
   onLock?: (id: string) => void
 }) {
   const { meetingTypes } = useMeetingCatalog()
+  const { role, roles, userName } = usePermission()
+  const isManager = roleIsManager(role, roles)
   const isCreate = topic === null
   const isEditable = isCreate || topic.status === '待安排' || topic.status === '已安排'
   const urgencyFromPriority = (p?: Priority): '紧急' | '急' | '一般' =>
@@ -2418,7 +3051,7 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock }:
     preGm: topic?.preBrief?.gm ?? false,
     preChairman: topic?.preBrief?.chairman ?? false,
     dept: topic?.dept ?? '',
-    submitter: topic?.submitter ?? '',
+    submitter: topic?.submitter ?? (isManager ? '' : userName),
     presenter: topic?.presenter ?? '',
     attendDepts: topic?.attendDepts ?? '',
     attendEnterprises: topic?.attendEnterprises ?? '',
@@ -2698,12 +3331,27 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock }:
             )
             : <input className={inputCls} readOnly value={form.dept || '—'} />}
         </Field>
-        <Field label="经办人" required={isEditable}>
-          <input className={inputCls} readOnly={!isEditable} value={form.submitter} onChange={e => set('submitter', e.target.value)} placeholder="姓名" />
-        </Field>
-        <Field label="汇报人" required={isEditable}>
-          <input className={inputCls} readOnly={!isEditable} value={form.presenter} onChange={e => set('presenter', e.target.value)} placeholder="上会汇报人" />
-        </Field>
+        <PersonField
+          label="经办人"
+          required={isEditable}
+          disabled={!isEditable || !isManager}
+          value={form.submitter}
+          onChange={name => {
+            set('submitter', name)
+            const p = findPerson(name)
+            if (p && DEPTS.includes(p.dept)) set('dept', p.dept)
+          }}
+          placeholder="点击选择经办人"
+          note={!isManager ? '普通申报人经办人固定为当前登录人' : undefined}
+        />
+        <PersonField
+          label="汇报人"
+          required={isEditable}
+          disabled={!isEditable}
+          value={form.presenter}
+          onChange={name => set('presenter', name)}
+          placeholder="点击选择汇报人"
+        />
       </div>
 
       <Field label="汇报时长">
@@ -2834,7 +3482,12 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock }:
   )
 }
 
-const IMPORT_HEADERS = ['议题名称', '议题类型', '经办部门', '经办人', '汇报人', '拟上会议', '汇报时长', '是否商密', '是否三重一大', '紧急程度', '列席部门', '列席企业', '备注']
+const IMPORT_HEADERS_OFFICE = ['议题名称', '经办部门', '经办人', '汇报人', '拟上会议', '汇报时长', '是否商密', '是否三重一大', '紧急程度', '列席部门', '列席企业', '备注']
+const IMPORT_HEADERS_OPS = ['议题名称', '经办部门', '经办人', '汇报人', '拟上会议', '汇报时长', '是否商密', '列席部门', '列席企业', '备注']
+
+function importHeadersForKind(kind: TopicKind) {
+  return kind === '经营管理会议题' ? IMPORT_HEADERS_OPS : IMPORT_HEADERS_OFFICE
+}
 
 function parseCsvText(text: string): string[][] {
   const rows: string[][] = []
@@ -2865,12 +3518,18 @@ function parseHtmlTable(text: string): string[][] {
   ).filter(r => r.some(c => c))
 }
 
-function downloadTopicTemplate() {
-  const example = ['集团数字化转型四期预研', '总经办议题', '信息技术部', '张慧敏', '张慧敏', '广汽集团总经理办公会', '5', '否', '否', '急', '', '', '示例行，导入前请删除']
+function downloadTopicTemplate(kind: TopicKind, meetingTypes: MeetingTypeDef[]) {
+  const headers = importHeadersForKind(kind)
+  const typeNames = typeNamesForKind(meetingTypes, kind)
+  const sampleMeeting = typeNames[0] ?? (kind === '经营管理会议题' ? '月度经营分析会' : '广汽集团总经理办公会')
+  const example = kind === '经营管理会议题'
+    ? ['月度经营数据复盘与四季度策略预研', '战略发展部', '李建国', '李建国', sampleMeeting, '15', '否', '', '', '示例行，导入前请删除']
+    : ['集团数字化转型四期预研', '信息技术部', '张慧敏', '张慧敏', sampleMeeting, '5', '否', '否', '急', '', '', '示例行，导入前请删除']
   const cell = (c: string) => `<td>${c.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td>`
-  const table = [IMPORT_HEADERS, example].map(r => `<tr>${r.map(cell).join('')}</tr>`).join('')
+  const table = [headers, example].map(r => `<tr>${r.map(cell).join('')}</tr>`).join('')
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table>${table}</table></body></html>`
-  downloadBlob(new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' }), '议题导入模板.xls')
+  const fileName = kind === '经营管理会议题' ? '经营管理会议题导入模板.xls' : '总经办议题导入模板.xls'
+  downloadBlob(new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' }), fileName)
 }
 
 function yesNo(v: string) {
@@ -2883,9 +3542,20 @@ function TopicImportModal({ topics, onClose, onImport }: {
   onImport: (rows: Topic[]) => void
 }) {
   const { meetingTypes } = useMeetingCatalog()
+  const { role, roles } = usePermission()
+  const scope = roleScopeCategory(role, roles)
+  const lockedKind: TopicKind | null = scope === '总经办' ? '总经办议题' : scope === '经营管理会' ? '经营管理会议题' : null
+  const [kind, setKind] = useState<TopicKind>(lockedKind ?? '总经办议题')
   const [rows, setRows] = useState<{ ok: boolean; errors: string[]; topic?: Topic; rawTitle: string }[]>([])
   const [fileName, setFileName] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const selectKind = (next: TopicKind) => {
+    if (lockedKind && next !== lockedKind) return
+    setKind(next)
+    setRows([])
+    setFileName('')
+  }
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -2903,13 +3573,24 @@ function TopicImportModal({ topics, onClose, onImport }: {
       setRows([{ ok: false, errors: ['文件为空或无法解析表头。'], rawTitle: '' }])
       return
     }
+    const expected = importHeadersForKind(kind)
     const header = grid[0].map(h => h.replace(/\s/g, ''))
+    const expectedNorm = expected.map(h => h.replace(/\s/g, ''))
+    const missingHeaders = expectedNorm.filter(h => !header.includes(h))
+    if (missingHeaders.length) {
+      setFileName(f.name)
+      setRows([{
+        ok: false,
+        errors: [`表头与「${kind}」模板不符，缺少：${missingHeaders.join('、')}。请下载对应模板后重新填写。`],
+        rawTitle: '',
+      }])
+      return
+    }
     const idx = (name: string) => header.findIndex(h => h === name.replace(/\s/g, ''))
+    const allowedMeetings = typeNamesForKind(meetingTypes, kind)
     const mapped = grid.slice(1).map((cols, i) => {
       const get = (name: string) => cols[idx(name)]?.trim() ?? ''
       const title = get('议题名称')
-      const kind = get('议题类型') as TopicKind
-      const allowedMeetings = typeNamesForKind(meetingTypes, kind)
       const dept = get('经办部门')
       const submitter = get('经办人')
       const presenter = get('汇报人') || submitter
@@ -2917,20 +3598,24 @@ function TopicImportModal({ topics, onClose, onImport }: {
       const minsRaw = get('汇报时长')
       const errors: string[] = []
       if (!title) errors.push('缺少议题名称')
-      if (kind !== '总经办议题' && kind !== '经营管理会议题') errors.push('议题类型须为「总经办议题」或「经营管理会议题」')
       if (!dept) errors.push('缺少经办部门')
       if (!submitter) errors.push('缺少经办人')
       if (!presenter) errors.push('缺少汇报人')
       const targetMeetings = meetingsRaw.split(/[、,;；]/).map(s => s.trim()).filter(Boolean)
       if (targetMeetings.length === 0) errors.push('缺少拟上会议')
       const unknown = targetMeetings.filter(n => !allowedMeetings.includes(n))
-      if (unknown.length) errors.push(`拟上会议不在字典中：${unknown.join('、')}`)
+      if (unknown.length) errors.push(`拟上会议须属于${kind === '经营管理会议题' ? '经营管理会' : '总经办'}类型：${unknown.join('、')}`)
       const mins = Number(minsRaw)
       if (!minsRaw || !Number.isFinite(mins) || mins <= 0) errors.push('汇报时长须为正整数分钟')
+      if (kind === '总经办议题') {
+        const urgency = get('紧急程度')
+        if (urgency && !['紧急', '急', '一般'].includes(urgency)) errors.push('紧急程度须为「紧急 / 急 / 一般」')
+      }
       if (title && topics.some(t => t.title === title)) errors.push('与系统已有议题名称完全重复')
       const dupInFile = grid.slice(1).filter((r, j) => j !== i && (r[idx('议题名称')] ?? '').trim() === title).length
       if (title && dupInFile) errors.push('文件内议题名称重复')
       const ok = errors.length === 0
+      const urgency = kind === '总经办议题' ? ((get('紧急程度') as '紧急' | '急' | '一般') || '一般') : '一般'
       const topic: Topic | undefined = ok ? {
         id: `T${String(Date.now()).slice(-6)}${i}`,
         title,
@@ -2938,7 +3623,7 @@ function TopicImportModal({ topics, onClose, onImport }: {
         dept,
         submittedAt: new Date().toISOString().slice(0, 10),
         status: '待安排',
-        priority: kind === '总经办议题' && get('紧急程度') === '紧急' ? '高' : '中',
+        priority: kind === '总经办议题' && urgency === '紧急' ? '高' : urgency === '一般' ? '低' : '中',
         background: get('备注'),
         objective: '',
         aiSummary: '',
@@ -2948,7 +3633,7 @@ function TopicImportModal({ topics, onClose, onImport }: {
         materials: ['（导入待补材料）'],
         isTradeSecret: yesNo(get('是否商密')),
         isMajorDecision: kind === '总经办议题' && yesNo(get('是否三重一大')),
-        urgency: kind === '总经办议题' ? ((get('紧急程度') as '紧急' | '急' | '一般') || '一般') : '一般',
+        urgency,
         targetMeetings,
         attendDepts: get('列席部门'),
         attendEnterprises: get('列席企业'),
@@ -2962,6 +3647,10 @@ function TopicImportModal({ topics, onClose, onImport }: {
   }
 
   const valid = rows.filter(r => r.ok && r.topic).map(r => r.topic!) as Topic[]
+  const kindLabel = kind === '经营管理会议题' ? '经营管理会' : '总经办'
+  const fieldHint = kind === '经营管理会议题'
+    ? '模板字段：议题名称、经办部门、经办人、汇报人、拟上会议、汇报时长、是否商密、列席部门、列席企业、备注。无需填写三重一大与紧急程度。'
+    : '模板字段：议题名称、经办部门、经办人、汇报人、拟上会议、汇报时长、是否商密、是否三重一大、紧急程度、列席部门、列席企业、备注。'
 
   return (
     <ModalShell
@@ -2971,20 +3660,44 @@ function TopicImportModal({ topics, onClose, onImport }: {
       expand
       onClose={onClose}
       footer={
-        <ModalFoot left={<span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{fileName ? `${fileName} · 可导入 ${valid.length} / ${rows.length} 行` : '请先下载模板并填写'}</span>}>
+        <ModalFoot left={<span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{fileName ? `${fileName} · 可导入 ${valid.length} / ${rows.length} 行` : `请先选择议题分类并下载「${kind}」模板`}</span>}>
           <Btn label="取消" variant="ghost" onClick={onClose} />
           <Btn label={`导入 ${valid.length} 条`} variant="primary" disabled={valid.length === 0} onClick={() => { onImport(valid); onClose() }} />
         </ModalFoot>
       }
     >
+      <Field label="导入议题分类" required>
+        <div className="chip-pick">
+          {([
+            ['总经办议题', '总经办'],
+            ['经营管理会议题', '经营管理会'],
+          ] as [TopicKind, string][]).map(([k, label]) => {
+            const disabled = !!lockedKind && lockedKind !== k
+            return (
+              <button
+                key={k}
+                type="button"
+                className={kind === k ? 'is-on' : ''}
+                disabled={disabled}
+                onClick={() => selectKind(k)}
+                style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+              >{label}</button>
+            )
+          })}
+        </div>
+        <div className="field-note">
+          {lockedKind
+            ? `当前角色仅可导入${kindLabel}议题，将使用对应模板与字段校验。`
+            : '不同分类对应不同 Excel 模板与字段；切换分类后需重新下载模板并上传。'}
+        </div>
+      </Field>
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <Btn label="下载 Excel 模板" variant="secondary" onClick={downloadTopicTemplate} />
+        <Btn label={`下载${kindLabel}模板`} variant="secondary" onClick={() => downloadTopicTemplate(kind, meetingTypes)} />
         <input ref={fileRef} type="file" accept=".xls,.csv,.txt,application/vnd.ms-excel,text/csv" style={{ display: 'none' }} onChange={handleFile} />
         <Btn label="选择文件导入" variant="primary" onClick={() => fileRef.current?.click()} />
       </div>
-      <div className="field-note" style={{ marginBottom: 12 }}>
-        请使用模板填写：议题名称、议题类型（总经办议题 / 经营管理会议题）、经办部门、经办人、汇报人、拟上会议（多个用顿号分隔）、汇报时长（分钟）。经营管理会议题无需填三重一大与紧急程度。
-      </div>
+      <div className="field-note" style={{ marginBottom: 12 }}>{fieldHint}</div>
       {rows.length === 0 && <div className="empty">尚未选择文件</div>}
       {rows.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -3003,12 +3716,16 @@ function TopicImportModal({ topics, onClose, onImport }: {
 }
 
 function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>> }) {
+  const { role, roles, userName } = usePermission()
+  const isManager = roleIsManager(role, roles)
+  const scope = roleScopeCategory(role, roles)
+  const scopedTopics = topics.filter(t => topicInRoleScope(t, role, roles, userName))
   const [filter, setFilter] = useState<TopicStatus | '全部'>('全部')
   const [modal, setModal] = useState<{ topic: Topic | null } | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [toast, setToast] = useState('')
 
-  const filtered = filter === '全部' ? topics : topics.filter(t => t.status === filter)
+  const filtered = filter === '全部' ? scopedTopics : scopedTopics.filter(t => t.status === filter)
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
 
@@ -3037,11 +3754,14 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
   }
 
   const FILTERS: (TopicStatus | '全部')[] = ['全部', '待安排', '已安排', '锁定中', '已上会']
-  const filterCount = (f: TopicStatus | '全部') => f === '全部' ? topics.length : topics.filter(t => t.status === f).length
+  const filterCount = (f: TopicStatus | '全部') => f === '全部' ? scopedTopics.length : scopedTopics.filter(t => t.status === f).length
+  const subtitle = isManager
+    ? `议题全生命周期管理：申报 → 安排 → 锁定 → 上会。支持 Excel 批量导入线下收集的议题。${scope ? `当前仅显示${scope}议题。` : ''}`
+    : `议题申报入口：可申报议题并跟踪本人相关进度。当前仅显示与「${userName}」相关的议题。`
 
   return (
     <div>
-      {showImport && (
+      {showImport && isManager && (
         <TopicImportModal topics={topics} onClose={() => setShowImport(false)} onImport={handleImport} />
       )}
       {modal !== undefined && modal !== null && (
@@ -3050,16 +3770,16 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
           existingTopics={topics}
           onClose={() => setModal(null)}
           onSave={handleSave}
-          onLock={handleLock}
+          onLock={isManager ? handleLock : undefined}
         />
       )}
 
       <SectionHeader
-        title="议题管理"
-        subtitle="议题全生命周期管理：申报 → 安排 → 锁定 → 上会。支持 Excel 批量导入线下收集的议题。"
+        title={isManager ? '议题管理' : '议题申报'}
+        subtitle={subtitle}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn label="Excel 导入" variant="secondary" onClick={() => setShowImport(true)} />
+            {isManager && <Btn label="Excel 导入" variant="secondary" onClick={() => setShowImport(true)} />}
             <Btn label="+ 申报议题" variant="primary" onClick={() => setModal({ topic: null })} />
           </div>
         }
@@ -3123,7 +3843,7 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <Btn label={canEdit ? '编辑' : '查看'} variant="ghost" small onClick={() => setModal({ topic: t })} />
-                      {t.status === '已安排' && (
+                      {isManager && t.status === '已安排' && (
                         <Btn label="锁定" variant="danger" small onClick={() => { handleLock(t.id) }} />
                       )}
                     </div>
@@ -3151,9 +3871,73 @@ const TOPIC_HISTORY: Record<string, { dp: string; quote: string; date: string; m
   ],
 }
 
-function MeetingLive() {
-  const m = INIT_MEETINGS[0]
-  const meetingTopics = m.meetingTopics.sort((a, b) => a.order - b.order).map(mt => INIT_TOPICS.find(t => t.id === mt.topicId)!).filter(Boolean)
+function MeetingLiveHub({ liveMeetings, meetingTypes, onEnter }: {
+  liveMeetings: Meeting[]
+  meetingTypes: MeetingTypeDef[]
+  onEnter: (id: string) => void
+}) {
+  const { role, roles } = usePermission()
+  const scope = roleScopeCategory(role, roles)
+
+  return (
+    <div>
+      <SectionHeader
+        title="会中管控"
+        subtitle={`选择要管控的进行中的会议。多场会议同时进行时，请分别进入对应会场。${scope ? `当前仅显示${scope}会议。` : ''}`}
+      />
+      {liveMeetings.length === 0 && (
+        <div className="empty">
+          当前无进行中的会议
+          <div style={{ marginTop: 6, fontSize: 12 }}>请先在会议管理中开始会议，或等待会议状态变为「进行中」</div>
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {liveMeetings.map(m => {
+          const typeMeta = meetingTypes.find(t => t.id === m.typeId)
+          const topicCount = m.meetingTopics.length
+          return (
+            <div
+              key={m.id}
+              onClick={() => onEnter(m.id)}
+              style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '18px 22px', cursor: 'pointer', transition: 'border-color 0.15s' }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--primary)' }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                    <Badge label="进行中" color="bg-amber-50 text-amber-800 border border-amber-200" />
+                    <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{m.id}</span>
+                    {typeMeta && <Badge label={typeMeta.category} color={typeMeta.category === '总经办' ? 'bg-slate-50 text-slate-700 border border-slate-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} />}
+                  </div>
+                  <div style={{ fontFamily: "'Noto Serif SC',serif", fontSize: 15, fontWeight: 700, marginBottom: 7 }}>{m.title}</div>
+                  <div className="meta">
+                    <span>{m.date} {m.time}–{m.endTime}</span>
+                    <span>{m.location}</span>
+                    <span>{m.chair}</span>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center', padding: '8px 14px', background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 6, flexShrink: 0 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', fontFamily: 'JetBrains Mono,monospace' }}>{topicCount}</div>
+                  <div style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>议题</div>
+                </div>
+              </div>
+              <div style={{ marginTop: 12, fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>进入会中管控 →</div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function MeetingLiveSession({ meeting, topics, onBack }: {
+  meeting: Meeting
+  topics: Topic[]
+  onBack: () => void
+}) {
+  const m = meeting
+  const meetingTopics = [...m.meetingTopics].sort((a, b) => a.order - b.order).map(mt => topics.find(t => t.id === mt.topicId)!).filter(Boolean)
   const [currentIdx, setCurrentIdx] = useState(0)
   const [notifyToast, setNotifyToast] = useState('')
 
@@ -3183,6 +3967,13 @@ function MeetingLive() {
 
       {/* ── Header ── */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--border)', padding: '0 28px', height: 60, display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--card)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--muted-foreground)', flexShrink: 0 }}
+        >
+          ← 返回
+        </button>
         {/* Live badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#faf6ec', border: '1px solid #f4ecd8', borderRadius: 20, padding: '4px 12px 4px 8px' }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse-ring 2s infinite' }} />
@@ -3346,6 +4137,27 @@ function MeetingLive() {
   )
 }
 
+function MeetingLive({ meetings, topics, selectedId, onSelect }: {
+  meetings: Meeting[]
+  topics: Topic[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+}) {
+  const { role, roles } = usePermission()
+  const { meetingTypes } = useMeetingCatalog()
+  const liveMeetings = meetings
+    .filter(m => m.status === '进行中')
+    .filter(m => meetingInRoleScope(m, role, meetingTypes, roles))
+
+  const meeting = selectedId ? meetings.find(m => m.id === selectedId) : null
+
+  if (!meeting || meeting.status !== '进行中' || !meetingInRoleScope(meeting, role, meetingTypes, roles)) {
+    return <MeetingLiveHub liveMeetings={liveMeetings} meetingTypes={meetingTypes} onEnter={onSelect} />
+  }
+
+  return <MeetingLiveSession meeting={meeting} topics={topics} onBack={() => onSelect(null)} />
+}
+
 // ─── Minutes ──────────────────────────────────────────────────────────────────
 
 interface SupervisionTask {
@@ -3503,12 +4315,22 @@ function SupervisionTaskModal({ task, onClose, onSave, onDelete }: {
         <textarea className="field-area" rows={4} value={form.detail} onChange={e => set('detail', e.target.value)} placeholder="督办要求、背景、达成标准" />
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="责任人 / 部门" required>
-          <input className="field-input" value={form.assignee} onChange={e => set('assignee', e.target.value)} placeholder="如：张慧敏 / 信息技术部" />
-        </Field>
-        <Field label="跟进人">
-          <input className="field-input" value={form.follower} onChange={e => set('follower', e.target.value)} placeholder="如：王总助" />
-        </Field>
+        <PersonField
+          label="责任人"
+          required
+          value={form.assignee.includes(' / ') ? form.assignee.split(' / ')[0] : form.assignee}
+          onChange={name => {
+            const p = findPerson(name)
+            set('assignee', p ? `${p.name} / ${p.dept}` : name)
+          }}
+          placeholder="点击选择责任人"
+        />
+        <PersonField
+          label="跟进人"
+          value={form.follower}
+          onChange={name => set('follower', name)}
+          placeholder="点击选择跟进人"
+        />
       </div>
       <Field label="截止日期">
         <input className="field-input" type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} />
@@ -3940,35 +4762,45 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
   )
 }
 
-function MinutesView({ topics, setTopics }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>> }) {
-  const meetings = INIT_MEETINGS.filter(m => m.status === '已结束').sort((a, b) => {
+function MinutesView({ topics, setTopics, meetings }: {
+  topics: Topic[]
+  setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
+  meetings: Meeting[]
+}) {
+  const { role, roles } = usePermission()
+  const { meetingTypes } = useMeetingCatalog()
+  const scope = roleScopeCategory(role, roles)
+  const scopedMeetings = meetings
+    .filter(m => m.status === '已结束')
+    .filter(m => meetingInRoleScope(m, role, meetingTypes, roles))
+    .sort((a, b) => {
     const aDone = INIT_MINUTES[a.id] ? 1 : 0
     const bDone = INIT_MINUTES[b.id] ? 1 : 0
     if (aDone !== bDone) return aDone - bDone
     return b.date.localeCompare(a.date)
   })
-  const [selectedId, setSelectedId] = useState<string>(meetings[0]?.id ?? '')
-  const selected = meetings.find(m => m.id === selectedId) ?? meetings[0]
+  const [selectedId, setSelectedId] = useState<string>(scopedMeetings[0]?.id ?? '')
+  const selected = scopedMeetings.find(m => m.id === selectedId) ?? scopedMeetings[0]
   const selectedArchived = selected ? INIT_MINUTES[selected.id] : undefined
 
   return (
     <div>
-      <SectionHeader title="会议纪要" subtitle="先生成 Word 初版并本地核改，再导入终版解析摘要、议题结论与督办事项 · 已归档纪要可直接查阅" />
+      <SectionHeader title="会议纪要" subtitle={`先生成 Word 初版并本地核改，再导入终版解析摘要、议题结论与督办事项 · 已归档纪要可直接查阅${scope ? ` · 当前仅显示${scope}会议` : ''}`} />
 
-      {meetings.length === 0 && (
+      {scopedMeetings.length === 0 && (
         <div className="empty">
           暂无已结束的会议
           <div style={{ marginTop: 6, fontSize: 12 }}>会议结束后将在此处显示，可上传纪要文件</div>
         </div>
       )}
 
-      {meetings.length > 0 && (
+      {scopedMeetings.length > 0 && (
       <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* Left: meeting list */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--muted-foreground)', letterSpacing: '0.04em' }}>历史会议</div>
-          {meetings.map(m => {
+          {scopedMeetings.map(m => {
             const archived = INIT_MINUTES[m.id]
             return (
               <div key={m.id} onClick={() => setSelectedId(m.id)} style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', background: selectedId === m.id ? 'var(--secondary)' : 'transparent', borderLeft: selectedId === m.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'all 0.15s' }}>
@@ -4098,15 +4930,25 @@ function NewActionModal({ onClose }: { onClose: () => void }) {
         <textarea className="field-area" rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="简述交办背景与目标" />
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="责任人">
-          <input className="field-input" value={form.assignee} onChange={e => set('assignee', e.target.value)} placeholder="姓名" />
-        </Field>
+        <PersonField
+          label="责任人"
+          value={form.assignee}
+          onChange={name => {
+            set('assignee', name)
+            const p = findPerson(name)
+            if (p) set('dept', p.dept)
+          }}
+          placeholder="点击选择责任人"
+        />
         <Field label="责任部门">
           <input className="field-input" value={form.dept} onChange={e => set('dept', e.target.value)} placeholder="部门名称" />
         </Field>
-        <Field label="跟进人">
-          <input className="field-input" value={form.follower} onChange={e => set('follower', e.target.value)} placeholder="姓名" />
-        </Field>
+        <PersonField
+          label="跟进人"
+          value={form.follower}
+          onChange={name => set('follower', name)}
+          placeholder="点击选择跟进人"
+        />
         <Field label="交办时间">
           <input className="field-input" type="date" value={form.assignedAt} onChange={e => set('assignedAt', e.target.value)} />
         </Field>
@@ -4118,17 +4960,21 @@ function NewActionModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-function ActionsView() {
+function ActionsView({ meetings }: { meetings: Meeting[] }) {
+  const { role, roles } = usePermission()
+  const { meetingTypes } = useMeetingCatalog()
+  const scope = roleScopeCategory(role, roles)
+  const scopedActions = ACTIONS.filter(a => actionInRoleScope(a, role, meetings, meetingTypes, roles))
   const [detailItem, setDetailItem] = useState<ActionItem | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [filterStatus, setFilterStatus] = useState<ActionStatus | '全部'>('全部')
   const [filterMeeting, setFilterMeeting] = useState<string>('全部')
   const [keyword, setKeyword] = useState('')
 
-  const uniqueMeetings = [...new Set(ACTIONS.map(a => a.meetingId))]
+  const uniqueMeetings = [...new Set(scopedActions.map(a => a.meetingId))]
   const q = keyword.trim()
 
-  const filtered = ACTIONS.filter(a => {
+  const filtered = scopedActions.filter(a => {
     if (filterStatus !== '全部' && a.status !== filterStatus) return false
     if (filterMeeting !== '全部' && a.meetingId !== filterMeeting) return false
     if (q && !`${a.title}${a.assignee}${a.dept}${a.follower}`.includes(q)) return false
@@ -4136,10 +4982,10 @@ function ActionsView() {
   })
 
   const stats = [
-    { label: '跟进中', value: ACTIONS.filter(a => a.status === '跟进中').length, color: 'var(--primary)' },
-    { label: '待确认关闭', value: ACTIONS.filter(a => a.status === '待确认关闭').length, color: '#d97706' },
-    { label: '已关闭', value: ACTIONS.filter(a => a.status === '已关闭').length, color: '#059669' },
-    { label: '逾期风险', value: ACTIONS.filter(a => a.status === '跟进中' && a.deadline < '2026-08-27').length || 1, color: '#dc2626' },
+    { label: '跟进中', value: scopedActions.filter(a => a.status === '跟进中').length, color: 'var(--primary)' },
+    { label: '待确认关闭', value: scopedActions.filter(a => a.status === '待确认关闭').length, color: '#d97706' },
+    { label: '已关闭', value: scopedActions.filter(a => a.status === '已关闭').length, color: '#059669' },
+    { label: '逾期风险', value: scopedActions.filter(a => a.status === '跟进中' && a.deadline < '2026-08-27').length || (scopedActions.length ? 0 : 0), color: '#dc2626' },
   ]
 
   return (
@@ -4147,7 +4993,7 @@ function ActionsView() {
       {detailItem && <ActionDetailModal item={detailItem} onClose={() => setDetailItem(null)} />}
       {showNew && <NewActionModal onClose={() => setShowNew(false)} />}
 
-      <SectionHeader title="交办事项管理" subtitle="会议决议转化的交办事项，实现闭环跟踪与阶段性汇报" action={<Btn label="+ 新建事项" variant="primary" onClick={() => setShowNew(true)} />} />
+      <SectionHeader title="交办事项管理" subtitle={`会议决议转化的交办事项，实现闭环跟踪与阶段性汇报${scope ? ` · 当前仅显示${scope}相关事项` : ''}`} action={<Btn label="+ 新建事项" variant="primary" onClick={() => setShowNew(true)} />} />
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
@@ -4300,6 +5146,16 @@ function IconBell({ c }: { c: string }) {
     </svg>
   )
 }
+function IconUsers({ c }: { c: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="6" cy="5" r="2.2" stroke={c} strokeWidth="1.4"/>
+      <path d="M1.8 13c0-2.2 1.9-4 4.2-4s4.2 1.8 4.2 4" stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="11.2" cy="5.5" r="1.8" stroke={c} strokeWidth="1.4"/>
+      <path d="M10.2 9.2c1.7.3 3 1.7 3 3.4" stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  )
+}
 function IconLogo({ c }: { c: string }) {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -4317,20 +5173,65 @@ type NavItem = { id: NavSection; label: string; icon: (c: string) => React.React
 const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard',     label: '管理驾驶舱', icon: c => <IconGrid c={c} />,      group: '概览' },
   { id: 'meeting-types', label: '会议类型',   icon: c => <IconList c={c} />,      group: '会前准备' },
-  { id: 'topics',        label: '议题管理',   icon: c => <IconClipboard c={c} />, group: '会前准备' },
+  { id: 'topics',        label: '议题申报',   icon: c => <IconClipboard c={c} />, group: '会前准备' },
   { id: 'meetings',      label: '会议管理',   icon: c => <IconCalendar c={c} />,  group: '会前准备' },
   { id: 'meeting-live',  label: '会中管控',   icon: c => <IconPlay c={c} />,      group: '会议进行' },
   { id: 'minutes',       label: '会议纪要',   icon: c => <IconDoc c={c} />,       group: '会后处理' },
   { id: 'actions',       label: '交办事项',   icon: c => <IconPin c={c} />,       group: '会后处理' },
+  { id: 'roles',         label: '角色管理',   icon: c => <IconUsers c={c} />,     group: '系统设置' },
 ]
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('meetings')
   const [topics, setTopics] = useState<Topic[]>(INIT_TOPICS)
+  const [meetings, setMeetings] = useState<Meeting[]>(INIT_MEETINGS)
   const [meetingTypes, setMeetingTypes] = useState<MeetingTypeDef[]>(INIT_MEETING_TYPES)
-  const groups = [...new Set(NAV_ITEMS.map(i => i.group))]
+  const [roles, setRoles] = useState<RoleDef[]>(INIT_ROLES)
+  const [role, setRole] = useState<UserRole>('admin')
+  const [userName, setUserName] = useState('王总助')
+  const [liveMeetingId, setLiveMeetingId] = useState<string | null>(null)
+
+  const roleMeta = role === EMPLOYEE_ROLE_ID
+    ? { id: EMPLOYEE_ROLE_ID, name: '普通员工', dept: '业务部门', avatar: (userName || '员').slice(0, 1), members: DEMO_PEOPLE }
+    : (roles.find(r => r.id === role) ?? roles[0] ?? INIT_ROLES[0])
+  const enabledRoles = roles.filter(r => r.enabled)
+  const isEmployeeView = role === EMPLOYEE_ROLE_ID
+  const memberOptions = isEmployeeView ? DEMO_PEOPLE : (roleMeta.members.length > 0 ? roleMeta.members : [userName])
+  const visibleNav = NAV_ITEMS.filter(item => roleCanAccess(role, item.id, roles))
+  const groups = [...new Set(visibleNav.map(i => i.group))]
+
+  const handleNav = (section: NavSection, meetingId?: string) => {
+    if (section === 'meeting-live') setLiveMeetingId(meetingId ?? null)
+    setActiveSection(section)
+  }
+
+  const handleIdentityMode = (mode: 'manager' | 'employee') => {
+    setLiveMeetingId(null)
+    if (mode === 'employee') {
+      setRole(EMPLOYEE_ROLE_ID)
+      setUserName(DEMO_PEOPLE[0])
+      setActiveSection('topics')
+      return
+    }
+    const next = enabledRoles[0]?.id ?? 'admin'
+    setRole(next)
+    const members = enabledRoles[0]?.members ?? []
+    if (members[0]) setUserName(members[0])
+    if (!roleCanAccess(next, activeSection, roles)) setActiveSection('dashboard')
+  }
+
+  const handleRoleChange = (next: UserRole) => {
+    const nextRole = roles.find(r => r.id === next)
+    setRole(next)
+    setLiveMeetingId(null)
+    if (nextRole?.members[0]) setUserName(nextRole.members[0])
+    if (!roleCanAccess(next, activeSection, roles)) {
+      setActiveSection(roleCanAccess(next, 'topics', roles) ? 'topics' : 'dashboard')
+    }
+  }
 
   return (
+    <PermissionContext.Provider value={{ role, setRole, roles, setRoles, userName, setUserName }}>
     <MeetingCatalogContext.Provider value={{ meetingTypes, setMeetingTypes }}>
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--background)' }}>
       <aside style={{ width: 'var(--sidebar-width)', background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -4351,14 +5252,14 @@ export default function App() {
           {groups.map(g => (
             <div key={g} style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(244,241,234,0.38)', letterSpacing: '0.12em', padding: '0 10px', marginBottom: 6 }}>{g}</div>
-              {NAV_ITEMS.filter(i => i.group === g).map(item => {
+              {visibleNav.filter(i => i.group === g).map(item => {
                 const active = activeSection === item.id
                 const iconColor = active ? 'var(--accent)' : 'rgba(244,241,234,0.5)'
                 return (
                   <div
                     key={item.id}
                     className="nav-item"
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => handleNav(item.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 2,
@@ -4381,12 +5282,38 @@ export default function App() {
           ))}
         </nav>
 
-        <div style={{ padding: '14px 16px', borderTop: '1px solid var(--sidebar-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(196,163,90,0.2)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>办</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, color: '#f4f1ea', fontWeight: 500, lineHeight: 1.3 }}>集团办公室</div>
-            <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.42)', marginTop: 1 }}>统筹管理员</div>
+        <div style={{ padding: '14px 16px', borderTop: '1px solid var(--sidebar-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(196,163,90,0.2)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{roleMeta.avatar}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: '#f4f1ea', fontWeight: 500, lineHeight: 1.3 }}>{userName}</div>
+              <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.42)', marginTop: 1 }}>{roleMeta.name}</div>
+            </div>
           </div>
+          <select
+            value={isEmployeeView ? 'employee' : 'manager'}
+            onChange={e => handleIdentityMode(e.target.value as 'manager' | 'employee')}
+            style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}
+          >
+            <option value="manager" style={{ color: '#1c2430' }}>管理员视角</option>
+            <option value="employee" style={{ color: '#1c2430' }}>普通员工（仅本人议题）</option>
+          </select>
+          {!isEmployeeView && (
+            <select
+              value={role}
+              onChange={e => handleRoleChange(e.target.value as UserRole)}
+              style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}
+            >
+              {enabledRoles.map(r => <option key={r.id} value={r.id} style={{ color: '#1c2430' }}>{r.name}</option>)}
+            </select>
+          )}
+          <select
+            value={memberOptions.includes(userName) ? userName : memberOptions[0]}
+            onChange={e => setUserName(e.target.value)}
+            style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}
+          >
+            {memberOptions.map(name => <option key={name} value={name} style={{ color: '#1c2430' }}>{name}</option>)}
+          </select>
         </div>
       </aside>
 
@@ -4409,16 +5336,18 @@ export default function App() {
           </div>
         </header>
         <main style={{ flex: 1, padding: '28px 32px' }}>
-          {activeSection === 'dashboard' && <Dashboard onNav={setActiveSection} topics={topics} />}
+          {activeSection === 'dashboard' && <Dashboard onNav={handleNav} topics={topics} meetings={meetings} />}
           {activeSection === 'meeting-types' && <MeetingTypesView />}
           {activeSection === 'topics' && <TopicsView topics={topics} setTopics={setTopics} />}
-          {activeSection === 'meetings' && <MeetingsView topics={topics} setTopics={setTopics} onNav={setActiveSection} />}
-          {activeSection === 'meeting-live' && <MeetingLive />}
-          {activeSection === 'minutes' && <MinutesView topics={topics} setTopics={setTopics} />}
-          {activeSection === 'actions' && <ActionsView />}
+          {activeSection === 'meetings' && <MeetingsView topics={topics} setTopics={setTopics} meetings={meetings} setMeetings={setMeetings} onNav={handleNav} />}
+          {activeSection === 'meeting-live' && <MeetingLive meetings={meetings} topics={topics} selectedId={liveMeetingId} onSelect={setLiveMeetingId} />}
+          {activeSection === 'minutes' && <MinutesView topics={topics} setTopics={setTopics} meetings={meetings} />}
+          {activeSection === 'actions' && <ActionsView meetings={meetings} />}
+          {activeSection === 'roles' && <RolesView />}
         </main>
       </div>
     </div>
     </MeetingCatalogContext.Provider>
+    </PermissionContext.Provider>
   )
 }
