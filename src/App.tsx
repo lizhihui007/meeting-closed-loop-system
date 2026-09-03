@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useContext, createContext } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type NavSection =
   | 'dashboard'
+  | 'meeting-types'
   | 'topics'
   | 'meetings'
   | 'meeting-live'
@@ -14,6 +15,8 @@ type TopicStatus = '待安排' | '已安排' | '锁定中' | '已上会'
 type ActionStatus = '跟进中' | '待确认关闭' | '已关闭'
 type MeetingStatus = '筹备中' | '进行中' | '已结束'
 type Priority = '高' | '中' | '低'
+type MeetingTypeCategory = '总经办' | '经营管理会'
+type TopicKind = '总经办议题' | '经营管理会议题'
 
 interface Topic {
   id: string
@@ -39,6 +42,8 @@ interface Topic {
   attendEnterprises?: string
   notes?: string
   outcomes?: TopicOutcome[]
+  topicKind?: TopicKind
+  relatedTopicId?: string
 }
 
 interface TopicOutcome {
@@ -98,19 +103,87 @@ interface ActionItem {
 
 // ─── Meeting Types ────────────────────────────────────────────────────────────
 
-const MEETING_TYPES = [
-  { id: 'gz-industry-special', name: '广州工业集团专题会',       desc: '广州工业集团专项研究会议',           color: '#2c5f6e', bg: '#eef4f5' },
-  { id: 'gac-gm-office',       name: '广汽集团总经理办公会',     desc: '广汽集团总经理主持的综合性决策会议', color: '#1b365d', bg: '#eef2f6' },
-  { id: 'gac-industry-party',  name: '广汽工业集团党委会',       desc: '广汽工业集团党委决策会议',           color: '#8b3a3a', bg: '#f6eeee' },
-  { id: 'gac-party',           name: '广汽集团党委会',           desc: '广汽集团党委决策会议',               color: '#6b2e2e', bg: '#f8eeee' },
-  { id: 'gac-industry-board',  name: '广汽集团工业集团董事会',   desc: '广汽工业集团董事会会议',             color: '#3d4a6b', bg: '#eef0f4' },
-  { id: 'gac-board',           name: '广汽集团董事会',           desc: '广汽集团董事会会议',                 color: '#2a3558', bg: '#eef0f4' },
+interface MeetingTypeDef {
+  id: string
+  name: string
+  desc: string
+  category: MeetingTypeCategory
+  color: string
+  bg: string
+  enabled: boolean
+}
+
+const TYPE_PALETTE = [
+  { color: '#1b365d', bg: '#eef2f6' },
+  { color: '#8b3a3a', bg: '#f6eeee' },
+  { color: '#3d4a6b', bg: '#eef0f4' },
+  { color: '#2c5f6e', bg: '#eef4f5' },
+  { color: '#2f5d4a', bg: '#eef4f1' },
+  { color: '#8a5a2b', bg: '#f5f0ea' },
 ]
 
-const TARGET_MEETINGS = MEETING_TYPES.map(t => t.name)
+const INIT_MEETING_TYPES: MeetingTypeDef[] = [
+  { id: 'gac-gm-office',       name: '广汽集团总经理办公会',     desc: '广汽集团总经理主持的综合性决策会议', category: '总经办',     color: '#1b365d', bg: '#eef2f6', enabled: true },
+  { id: 'gac-party',           name: '广汽集团党委会',           desc: '广汽集团党委决策会议',               category: '总经办',     color: '#6b2e2e', bg: '#f8eeee', enabled: true },
+  { id: 'gac-board',           name: '广汽集团董事会',           desc: '广汽集团董事会会议',                 category: '总经办',     color: '#2a3558', bg: '#eef0f4', enabled: true },
+  { id: 'gac-industry-party',  name: '广汽工业集团党委会',       desc: '广汽工业集团党委决策会议',           category: '总经办',     color: '#8b3a3a', bg: '#f6eeee', enabled: true },
+  { id: 'gac-industry-board',  name: '广汽集团工业集团董事会',   desc: '广汽工业集团董事会会议',             category: '总经办',     color: '#3d4a6b', bg: '#eef0f4', enabled: true },
+  { id: 'gz-industry-special', name: '广州工业集团专题会',       desc: '广州工业集团专项研究会议',           category: '总经办',     color: '#2c5f6e', bg: '#eef4f5', enabled: true },
+  { id: 'ops-monthly',         name: '月度经营分析会',           desc: '月度经营数据复盘与策略研判',         category: '经营管理会', color: '#2f5d4a', bg: '#eef4f1', enabled: true },
+  { id: 'ops-dispatch',        name: '经营调度会',               desc: '跨板块经营调度与协同推进',           category: '经营管理会', color: '#8a5a2b', bg: '#f5f0ea', enabled: true },
+]
 
-function meetingTypeName(typeId: string) {
-  return MEETING_TYPES.find(t => t.id === typeId)?.name ?? typeId
+function meetingTypeName(typeId: string, types: MeetingTypeDef[] = INIT_MEETING_TYPES) {
+  return types.find(t => t.id === typeId)?.name ?? typeId
+}
+
+const MeetingCatalogContext = createContext<{
+  meetingTypes: MeetingTypeDef[]
+  setMeetingTypes: React.Dispatch<React.SetStateAction<MeetingTypeDef[]>>
+}>({ meetingTypes: INIT_MEETING_TYPES, setMeetingTypes: () => {} })
+
+function useMeetingCatalog() {
+  return useContext(MeetingCatalogContext)
+}
+
+function typeNamesForKind(types: MeetingTypeDef[], kind: TopicKind) {
+  const cat: MeetingTypeCategory = kind === '经营管理会议题' ? '经营管理会' : '总经办'
+  return types.filter(t => t.enabled && t.category === cat).map(t => t.name)
+}
+
+function normalizeTitle(s: string) {
+  return s.replace(/\s+/g, '').replace(/[（）()【】\[\]《》""'']/g, '').toLowerCase()
+}
+
+function titleSimilarity(a: string, b: string) {
+  const na = normalizeTitle(a)
+  const nb = normalizeTitle(b)
+  if (!na || !nb) return 0
+  if (na === nb) return 1
+  if (na.includes(nb) || nb.includes(na)) return Math.min(0.92, Math.max(na.length, nb.length) ? Math.min(na.length, nb.length) / Math.max(na.length, nb.length) + 0.35 : 0.8)
+  const grams = (s: string) => {
+    const g = new Set<string>()
+    if (s.length === 1) g.add(s)
+    for (let i = 0; i < s.length - 1; i++) g.add(s.slice(i, i + 2))
+    return g
+  }
+  const A = grams(na)
+  const B = grams(nb)
+  let inter = 0
+  A.forEach(x => { if (B.has(x)) inter++ })
+  if (A.size + B.size === 0) return 0
+  return (2 * inter) / (A.size + B.size)
+}
+
+function findSimilarTopics(title: string, topics: Topic[], excludeId?: string) {
+  const q = title.trim()
+  if (q.length < 4) return []
+  return topics
+    .filter(t => t.id !== excludeId)
+    .map(t => ({ topic: t, score: titleSimilarity(q, t.title) }))
+    .filter(x => x.score >= 0.55)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
 }
 
 const MEETING_ORG_DEPTS = ['集团办公室', '党委办公室', '董事会办公室', '战略发展部', '人力资源部', '综合室']
@@ -695,8 +768,10 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
   onSave: (m: Meeting) => void
   defaultTypeId?: string
 }) {
-  const typeMeta = MEETING_TYPES.find(t => t.id === defaultTypeId) ?? MEETING_TYPES[0]
-  const [typeId, setTypeId] = useState(defaultTypeId)
+  const { meetingTypes } = useMeetingCatalog()
+  const enabledTypes = meetingTypes.filter(t => t.enabled)
+  const typeMeta = enabledTypes.find(t => t.id === defaultTypeId) ?? enabledTypes[0] ?? INIT_MEETING_TYPES[0]
+  const [typeId, setTypeId] = useState(typeMeta.id)
   const [title, setTitle] = useState(typeMeta.name)
   const [date, setDate] = useState('2026-09-12')
   const [time, setTime] = useState('09:00')
@@ -748,7 +823,7 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
     >
       <Field label="会议类型">
         <div className="choice-grid">
-          {MEETING_TYPES.map(t => (
+          {enabledTypes.map(t => (
             <button
               key={t.id}
               type="button"
@@ -868,7 +943,8 @@ function TopicPickerModal({ topics, alreadyPicked, meetingTypeId, onClose, onAdd
   onClose: () => void
   onAdd: (topicId: string) => void
 }) {
-  const typeName = meetingTypeName(meetingTypeId)
+  const { meetingTypes } = useMeetingCatalog()
+  const typeName = meetingTypeName(meetingTypeId, meetingTypes)
   const available = topics.filter(t =>
     (t.status === '待安排' || t.status === '已安排')
     && !alreadyPicked.includes(t.id)
@@ -1130,6 +1206,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
       {detailTopic && (
         <TopicFormModal
           topic={topics.find(t => t.id === detailTopic.id) ?? detailTopic}
+          existingTopics={topics}
           onClose={() => setDetailTopic(null)}
           onSave={saved => setTopics(prev => prev.map(t => t.id === saved.id ? saved : t))}
         />
@@ -1435,10 +1512,12 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onNew, on
   onNew: () => void
   onNav: (s: NavSection) => void
 }) {
-  const typeMeta = MEETING_TYPES.find(t => t.id === typeId)!
+  const { meetingTypes } = useMeetingCatalog()
+  const typeMeta = meetingTypes.find(t => t.id === typeId) ?? INIT_MEETING_TYPES.find(t => t.id === typeId)
   const typeMeetings = meetings.filter(m => m.typeId === typeId)
   const statusOrder: MeetingStatus[] = ['进行中', '筹备中', '已结束']
   const sorted = [...typeMeetings].sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status))
+  if (!typeMeta) return <div className="empty">会议类型不存在</div>
 
   return (
     <div>
@@ -1521,6 +1600,8 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onNew, on
 }
 
 function MeetingsView({ topics, setTopics, onNav }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>>; onNav: (s: NavSection) => void }) {
+  const { meetingTypes } = useMeetingCatalog()
+  const gridTypes = meetingTypes.filter(t => t.enabled)
   const [meetings, setMeetings] = useState<Meeting[]>(INIT_MEETINGS)
   const [showNew, setShowNew] = useState(false)
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
@@ -1578,7 +1659,7 @@ function MeetingsView({ topics, setTopics, onNav }: { topics: Topic[]; setTopics
       />
 
       <div className="type-grid">
-        {MEETING_TYPES.map((type, i) => {
+        {gridTypes.map((type, i) => {
           const typeMeetings = meetings.filter(m => m.typeId === type.id)
           const statusOrder: MeetingStatus[] = ['进行中', '筹备中', '已结束']
           const latest = [...typeMeetings].sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status))[0]
@@ -1652,6 +1733,7 @@ function ProgressRing({ pct, color, center }: { pct: number; color: string; cent
 }
 
 function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => void; topics?: Topic[] }) {
+  const { meetingTypes } = useMeetingCatalog()
   const asOf = '2026-08-28'
   const monthKey = asOf.slice(0, 7)
   const meetings = INIT_MEETINGS
@@ -1680,7 +1762,7 @@ function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => 
   const dueSoon = ACTIONS.filter(a => a.status === '跟进中' && a.deadline >= asOf && a.deadline <= '2026-09-07')
   const actionMax = Math.max(...Object.values(actionN), 1)
 
-  const typeRows = MEETING_TYPES.map(type => {
+  const typeRows = meetingTypes.map(type => {
     const list = meetings.filter(m => m.typeId === type.id)
     if (list.length === 0) return null
     const done = list.filter(m => m.status === '已结束')
@@ -1710,7 +1792,7 @@ function Dashboard({ onNav, topics = INIT_TOPICS }: { onNav: (s: NavSection) => 
   return (
     <div>
       <SectionHeader
-        title="会枢驾驶舱"
+        title="智会驾驶舱"
         subtitle={`统计周期 2026年1–8月 · 数据截至 ${asOf} · 集团总部`}
       />
 
@@ -2167,22 +2249,166 @@ function _SubmitTopicModal_UNUSED({ onClose, onSave }: {
   )
 }
 
+// ─── Meeting Type Admin ───────────────────────────────────────────────────────
+
+function MeetingTypeModal({ item, onClose, onSave }: {
+  item: MeetingTypeDef | null
+  onClose: () => void
+  onSave: (t: MeetingTypeDef) => void
+}) {
+  const { meetingTypes } = useMeetingCatalog()
+  const isCreate = item === null
+  const pal = TYPE_PALETTE[meetingTypes.length % TYPE_PALETTE.length]
+  const [form, setForm] = useState({
+    name: item?.name ?? '',
+    desc: item?.desc ?? '',
+    category: (item?.category ?? '总经办') as MeetingTypeCategory,
+    color: item?.color ?? pal.color,
+    bg: item?.bg ?? pal.bg,
+    enabled: item?.enabled ?? true,
+  })
+  const dup = meetingTypes.some(t => t.name === form.name.trim() && t.id !== item?.id)
+
+  return (
+    <ModalShell
+      title={isCreate ? '新增会议类型' : '编辑会议类型'}
+      kicker="会议类型字典"
+      width={560}
+      onClose={onClose}
+      footer={
+        <ModalFoot>
+          <Btn label="取消" variant="ghost" onClick={onClose} />
+          <Btn
+            label={isCreate ? '保存' : '保存修改'}
+            variant="primary"
+            disabled={!form.name.trim() || dup}
+            onClick={() => onSave({
+              id: item?.id ?? `mt-${Date.now().toString(36)}`,
+              name: form.name.trim(),
+              desc: form.desc.trim(),
+              category: form.category,
+              color: form.color,
+              bg: form.bg,
+              enabled: form.enabled,
+            })}
+          />
+        </ModalFoot>
+      }
+    >
+      <Field label="类型名称" required>
+        <input className="field-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="如：月度经营分析会" />
+        {dup && <div className="field-note" style={{ color: '#8b3a3a' }}>已存在同名会议类型</div>}
+      </Field>
+      <Field label="所属分类" required>
+        <div className="chip-pick">
+          {(['总经办', '经营管理会'] as MeetingTypeCategory[]).map(c => (
+            <button key={c} type="button" className={form.category === c ? 'is-on' : ''} onClick={() => setForm(f => ({ ...f, category: c }))}>{c}</button>
+          ))}
+        </div>
+      </Field>
+      <Field label="说明">
+        <input className="field-input" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="简要说明该会议类型用途" />
+      </Field>
+    </ModalShell>
+  )
+}
+
+function MeetingTypesView() {
+  const { meetingTypes, setMeetingTypes } = useMeetingCatalog()
+  const [modal, setModal] = useState<MeetingTypeDef | null | 'new'>(null)
+  const [toast, setToast] = useState('')
+  const usedIds = new Set(INIT_MEETINGS.map(m => m.typeId))
+  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2800) }
+
+  const save = (saved: MeetingTypeDef) => {
+    setMeetingTypes(prev => prev.some(t => t.id === saved.id) ? prev.map(t => t.id === saved.id ? saved : t) : [...prev, saved])
+    setModal(null)
+    showToast(saved.id.startsWith('mt-') && !meetingTypes.some(t => t.id === saved.id) ? '会议类型已新增。' : '会议类型已保存。')
+  }
+
+  const toggle = (id: string) => {
+    setMeetingTypes(prev => prev.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t))
+  }
+
+  const remove = (id: string) => {
+    if (usedIds.has(id)) { showToast('该类型已有会议记录，不可删除，可停用。'); return }
+    setMeetingTypes(prev => prev.filter(t => t.id !== id))
+    showToast('已删除会议类型。')
+  }
+
+  return (
+    <div>
+      {modal !== null && (
+        <MeetingTypeModal
+          item={modal === 'new' ? null : modal}
+          onClose={() => setModal(null)}
+          onSave={save}
+        />
+      )}
+      {toast && <div className="toast">{toast}</div>}
+      <SectionHeader
+        title="会议类型"
+        subtitle="维护系统会议类型字典。每一类型须归属于总经办或经营管理会，供议题申报与会议创建选用。"
+        action={<Btn label="+ 新增类型" variant="primary" onClick={() => setModal('new')} />}
+      />
+
+      {(['总经办', '经营管理会'] as MeetingTypeCategory[]).map(cat => {
+        const list = meetingTypes.filter(t => t.category === cat)
+        return (
+          <Card key={cat} style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>{cat}</div>
+              <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{list.length} 种</span>
+            </div>
+            {list.length === 0 && <div className="empty" style={{ padding: 24 }}>暂无类型，请新增</div>}
+            {list.map(t => (
+              <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: t.color, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 2 }}>{t.desc || '—'}</div>
+                </div>
+                <Badge
+                  label={t.enabled ? '启用' : '停用'}
+                  color={t.enabled ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-500 border border-slate-200'}
+                />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <Btn label="编辑" variant="ghost" small onClick={() => setModal(t)} />
+                  <Btn label={t.enabled ? '停用' : '启用'} variant="ghost" small onClick={() => toggle(t.id)} />
+                  <Btn label="删除" variant="danger" small onClick={() => remove(t.id)} />
+                </div>
+              </div>
+            ))}
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Topics View ──────────────────────────────────────────────────────────────
 
 // ─── Topic Form Modal ─────────────────────────────────────────────────────────
 
-function TopicFormModal({ topic, onClose, onSave, onLock }: {
+function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock }: {
   topic: Topic | null
+  existingTopics?: Topic[]
   onClose: () => void
   onSave: (t: Topic) => void
   onLock?: (id: string) => void
 }) {
+  const { meetingTypes } = useMeetingCatalog()
   const isCreate = topic === null
   const isEditable = isCreate || topic.status === '待安排' || topic.status === '已安排'
   const urgencyFromPriority = (p?: Priority): '紧急' | '急' | '一般' =>
     p === '高' ? '紧急' : p === '低' ? '一般' : '急'
 
+  const presetMins = [3, 5, 8]
+  const initialMins = topic?.estimatedMins ?? 5
+  const initialOther = !presetMins.includes(initialMins)
+
   const [form, setForm] = useState({
+    topicKind: (topic?.topicKind ?? '总经办议题') as TopicKind,
     title: topic?.title ?? '',
     isTradeSecret: topic?.isTradeSecret ?? false,
     isMajorDecision: topic?.isMajorDecision ?? false,
@@ -2196,8 +2422,11 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
     presenter: topic?.presenter ?? '',
     attendDepts: topic?.attendDepts ?? '',
     attendEnterprises: topic?.attendEnterprises ?? '',
-    estimatedMins: topic?.estimatedMins && [3, 5, 8].includes(topic.estimatedMins) ? topic.estimatedMins : 5,
+    estimatedMins: initialOther ? 5 : initialMins,
+    minsOther: initialOther,
+    customMins: initialOther ? String(initialMins) : '',
     notes: topic?.notes ?? '',
+    relatedTopicId: topic?.relatedTopicId ?? '',
   })
   const [files, setFiles] = useState<{ id: number; name: string; size: string }[]>(
     topic?.materials.map((m, i) => ({ id: i, name: m, size: '—' })) ?? []
@@ -2263,6 +2492,9 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
 
   const handleSave = () => {
     const urgency = form.urgency
+    const mins = form.topicKind === '经营管理会议题' && form.minsOther
+      ? Math.max(1, Number(form.customMins) || 0)
+      : form.estimatedMins
     const saved: Topic = {
       id: topic?.id ?? `T${String(Math.floor(Math.random() * 900) + 100)}`,
       title: form.title,
@@ -2270,30 +2502,37 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
       dept: form.dept,
       submittedAt: topic?.submittedAt ?? new Date().toISOString().slice(0, 10),
       status: topic?.status ?? '待安排',
-      priority: urgency === '紧急' ? '高' : urgency === '一般' ? '低' : '中',
+      priority: form.topicKind === '经营管理会议题' ? '中' : (urgency === '紧急' ? '高' : urgency === '一般' ? '低' : '中'),
       background: topic?.background ?? form.notes,
       objective: topic?.objective ?? '',
       aiSummary: isCreate ? '' : (topic?.aiSummary ?? ''),
       decisionPoints: topic?.decisionPoints ?? [],
       presenter: form.presenter,
-      estimatedMins: form.estimatedMins,
+      estimatedMins: mins,
       materials: files.map(f => f.name),
       isTradeSecret: form.isTradeSecret,
-      isMajorDecision: form.isMajorDecision,
-      urgency,
+      isMajorDecision: form.topicKind === '总经办议题' ? form.isMajorDecision : false,
+      urgency: form.topicKind === '总经办议题' ? urgency : '一般',
       targetMeetings: form.targetMeetings,
       preBrief: { leader: form.preLeader, gm: form.preGm, chairman: form.preChairman },
       attendDepts: form.attendDepts,
       attendEnterprises: form.attendEnterprises,
       notes: form.notes,
       outcomes: topic?.outcomes,
+      topicKind: form.topicKind,
+      relatedTopicId: form.relatedTopicId || undefined,
     }
     onSave(saved)
     onClose()
   }
 
-  const canSave = !!(form.title && form.dept && form.submitter && form.presenter && form.targetMeetings.length > 0 && files.length > 0)
+  const minsOk = !(form.topicKind === '经营管理会议题' && form.minsOther) || (Number(form.customMins) > 0)
+  const canSave = !!(form.title && form.dept && form.submitter && form.presenter && form.targetMeetings.length > 0 && files.length > 0 && minsOk)
   const inputCls = `field-input${!isEditable ? ' is-ro' : ''}`
+  const isOffice = form.topicKind === '总经办议题'
+  const typeNames = typeNamesForKind(meetingTypes, form.topicKind)
+  const similar = isCreate && isEditable ? findSimilarTopics(form.title, existingTopics) : []
+  const related = existingTopics.find(t => t.id === form.relatedTopicId)
 
   return (
     <ModalShell
@@ -2340,29 +2579,84 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
         )
       )}
 
+      <Field label="议题类型" required={isEditable}>
+        <select
+          className="field-select"
+          disabled={!isEditable}
+          value={form.topicKind}
+          onChange={e => {
+            const kind = e.target.value as TopicKind
+            const allowed = typeNamesForKind(meetingTypes, kind)
+            setForm(f => ({
+              ...f,
+              topicKind: kind,
+              targetMeetings: f.targetMeetings.filter(n => allowed.includes(n)),
+            }))
+          }}
+        >
+          <option value="总经办议题">总经办议题</option>
+          <option value="经营管理会议题">经营管理会议题</option>
+        </select>
+      </Field>
+
       <Field label="议题名称" required={isEditable}>
         <input className={inputCls} readOnly={!isEditable} value={form.title} onChange={e => set('title', e.target.value)} placeholder="一句话概括议题名称" />
       </Field>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+      {isCreate && similar.length > 0 && (
+        <div style={{ marginBottom: 14, padding: '12px 14px', background: '#faf6ec', border: '1px solid #f4ecd8', borderRadius: 7 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#9a7b3a', marginBottom: 8 }}>发现高度相似的历史议题，请确认是否重复申报</div>
+          {similar.map(s => (
+            <div key={s.topic.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid #f4ecd8' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{s.topic.title}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2 }}>
+                  {s.topic.id} · {s.topic.dept} · {s.topic.submittedAt} · 相似度 {Math.round(s.score * 100)}%
+                </div>
+              </div>
+              <Btn
+                label={form.relatedTopicId === s.topic.id ? '已关联' : '关联'}
+                variant={form.relatedTopicId === s.topic.id ? 'primary' : 'secondary'}
+                small
+                onClick={() => set('relatedTopicId', form.relatedTopicId === s.topic.id ? '' : s.topic.id)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {related && (
+        <div className="field-note" style={{ marginBottom: 12 }}>
+          已关联历史议题：{related.id} {related.title}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: isOffice ? '1fr 1fr 1fr' : '1fr', gap: 12, marginBottom: isOffice ? 0 : 14 }}>
         <Field label="是否属于商密" required={isEditable}>
           <YesNo value={form.isTradeSecret} disabled={!isEditable} onChange={v => set('isTradeSecret', v)} />
         </Field>
-        <Field label="是否三重一大" required={isEditable}>
-          <YesNo value={form.isMajorDecision} disabled={!isEditable} onChange={v => set('isMajorDecision', v)} />
-        </Field>
-        <Field label="紧急程度" required={isEditable}>
-          <select className="field-select" disabled={!isEditable} value={form.urgency} onChange={e => set('urgency', e.target.value)}>
-            <option value="一般">一般</option>
-            <option value="急">急</option>
-            <option value="紧急">紧急</option>
-          </select>
-        </Field>
+        {isOffice && (
+          <Field label="是否三重一大" required={isEditable}>
+            <YesNo value={form.isMajorDecision} disabled={!isEditable} onChange={v => set('isMajorDecision', v)} />
+          </Field>
+        )}
+        {isOffice && (
+          <Field label="紧急程度" required={isEditable}>
+            <select className="field-select" disabled={!isEditable} value={form.urgency} onChange={e => set('urgency', e.target.value)}>
+              <option value="一般">一般</option>
+              <option value="急">急</option>
+              <option value="紧急">紧急</option>
+            </select>
+          </Field>
+        )}
       </div>
 
       <Field label="拟上会议" required={isEditable}>
+        {isOffice && (
+          <div className="field-note" style={{ marginBottom: 8 }}>勾选拟上会的会议类型，可多选。</div>
+        )}
         <div className="chip-pick">
-          {TARGET_MEETINGS.map(name => (
+          {typeNames.map(name => (
             <button
               key={name}
               type="button"
@@ -2413,20 +2707,54 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
       </div>
 
       <Field label="汇报时长">
-        <select className="field-select" disabled={!isEditable} value={form.estimatedMins} onChange={e => set('estimatedMins', Number(e.target.value))}>
-          <option value={3}>3 分钟</option>
-          <option value={5}>5 分钟（一般）</option>
-          <option value={8}>8 分钟</option>
-        </select>
+        {isOffice ? (
+          <select className="field-select" disabled={!isEditable} value={form.estimatedMins} onChange={e => set('estimatedMins', Number(e.target.value))}>
+            <option value={3}>3 分钟</option>
+            <option value={5}>5 分钟（一般）</option>
+            <option value={8}>8 分钟</option>
+          </select>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select
+              className="field-select"
+              disabled={!isEditable}
+              value={form.minsOther ? 'other' : String(form.estimatedMins)}
+              onChange={e => {
+                if (e.target.value === 'other') setForm(f => ({ ...f, minsOther: true }))
+                else setForm(f => ({ ...f, minsOther: false, estimatedMins: Number(e.target.value) }))
+              }}
+              style={{ flex: 1 }}
+            >
+              <option value="3">3 分钟</option>
+              <option value="5">5 分钟（一般）</option>
+              <option value="8">8 分钟</option>
+              <option value="other">其他时长</option>
+            </select>
+            {form.minsOther && (
+              <input
+                className={inputCls}
+                readOnly={!isEditable}
+                type="number"
+                min={1}
+                value={form.customMins}
+                onChange={e => set('customMins', e.target.value)}
+                placeholder="分钟"
+                style={{ width: 120 }}
+              />
+            )}
+          </div>
+        )}
       </Field>
 
       <Field label="需列席部门">
-        <div className="field-note">
-          党委会 / 办公会固定列席部门无需填写，经办同事只写非固定列席部门，无则留空。
-          <div>党委会常列席：党委办公室、党委工作部、综合室、战略本部、审计专员办；前置研究议题另增：审计部、法律与合规部、董办。</div>
-          <div>办公会常列席：办公室、党委工作部/团委、人力资源部/组织部、综合室、品牌公关部、董办、财务本部、审计部/业务督察部、法律与合规部、战略本部、变革与流程管理办公室。</div>
-        </div>
-        <textarea className="field-area" readOnly={!isEditable} rows={2} value={form.attendDepts} onChange={e => set('attendDepts', e.target.value)} placeholder="仅填非固定列席部门，无则留空" />
+        {isOffice && (
+          <div className="field-note">
+            党委会 / 办公会固定列席部门无需填写，经办同事只写非固定列席部门，无则留空。
+            <div>党委会常列席：党委办公室、党委工作部、综合室、战略本部、审计专员办；前置研究议题另增：审计部、法律与合规部、董办。</div>
+            <div>办公会常列席：办公室、党委工作部/团委、人力资源部/组织部、综合室、品牌公关部、董办、财务本部、审计部/业务督察部、法律与合规部、战略本部、变革与流程管理办公室。</div>
+          </div>
+        )}
+        <textarea className="field-area" readOnly={!isEditable} rows={2} value={form.attendDepts} onChange={e => set('attendDepts', e.target.value)} placeholder={isOffice ? '仅填非固定列席部门，无则留空' : '如有列席部门请填写，无则留空'} />
       </Field>
 
       <Field label="需列席企业">
@@ -2506,9 +2834,178 @@ function TopicFormModal({ topic, onClose, onSave, onLock }: {
   )
 }
 
+const IMPORT_HEADERS = ['议题名称', '议题类型', '经办部门', '经办人', '汇报人', '拟上会议', '汇报时长', '是否商密', '是否三重一大', '紧急程度', '列席部门', '列席企业', '备注']
+
+function parseCsvText(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let cur = ''
+  let quoted = false
+  const src = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i]
+    if (quoted) {
+      if (ch === '"' && src[i + 1] === '"') { cur += '"'; i++ }
+      else if (ch === '"') quoted = false
+      else cur += ch
+    } else if (ch === '"') quoted = true
+    else if (ch === ',' || ch === '\t') { row.push(cur.trim()); cur = '' }
+    else if (ch === '\n') { row.push(cur.trim()); if (row.some(c => c)) rows.push(row); row = []; cur = '' }
+    else cur += ch
+  }
+  row.push(cur.trim())
+  if (row.some(c => c)) rows.push(row)
+  return rows
+}
+
+function parseHtmlTable(text: string): string[][] {
+  const doc = new DOMParser().parseFromString(text, 'text/html')
+  return Array.from(doc.querySelectorAll('tr')).map(tr =>
+    Array.from(tr.querySelectorAll('td,th')).map(td => (td.textContent ?? '').trim())
+  ).filter(r => r.some(c => c))
+}
+
+function downloadTopicTemplate() {
+  const example = ['集团数字化转型四期预研', '总经办议题', '信息技术部', '张慧敏', '张慧敏', '广汽集团总经理办公会', '5', '否', '否', '急', '', '', '示例行，导入前请删除']
+  const cell = (c: string) => `<td>${c.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td>`
+  const table = [IMPORT_HEADERS, example].map(r => `<tr>${r.map(cell).join('')}</tr>`).join('')
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table>${table}</table></body></html>`
+  downloadBlob(new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' }), '议题导入模板.xls')
+}
+
+function yesNo(v: string) {
+  return v === '是' || v === 'Y' || v === 'y' || v === 'true' || v === 'TRUE'
+}
+
+function TopicImportModal({ topics, onClose, onImport }: {
+  topics: Topic[]
+  onClose: () => void
+  onImport: (rows: Topic[]) => void
+}) {
+  const { meetingTypes } = useMeetingCatalog()
+  const [rows, setRows] = useState<{ ok: boolean; errors: string[]; topic?: Topic; rawTitle: string }[]>([])
+  const [fileName, setFileName] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    if (/\.xlsx$/i.test(f.name)) {
+      setFileName(f.name)
+      setRows([{ ok: false, errors: ['暂不支持 .xlsx，请使用下载的 Excel 模板（.xls）或另存为 CSV 后导入。'], rawTitle: '' }])
+      return
+    }
+    const text = await f.text()
+    const grid = /<table/i.test(text) ? parseHtmlTable(text) : parseCsvText(text)
+    if (grid.length < 2) {
+      setFileName(f.name)
+      setRows([{ ok: false, errors: ['文件为空或无法解析表头。'], rawTitle: '' }])
+      return
+    }
+    const header = grid[0].map(h => h.replace(/\s/g, ''))
+    const idx = (name: string) => header.findIndex(h => h === name.replace(/\s/g, ''))
+    const mapped = grid.slice(1).map((cols, i) => {
+      const get = (name: string) => cols[idx(name)]?.trim() ?? ''
+      const title = get('议题名称')
+      const kind = get('议题类型') as TopicKind
+      const allowedMeetings = typeNamesForKind(meetingTypes, kind)
+      const dept = get('经办部门')
+      const submitter = get('经办人')
+      const presenter = get('汇报人') || submitter
+      const meetingsRaw = get('拟上会议')
+      const minsRaw = get('汇报时长')
+      const errors: string[] = []
+      if (!title) errors.push('缺少议题名称')
+      if (kind !== '总经办议题' && kind !== '经营管理会议题') errors.push('议题类型须为「总经办议题」或「经营管理会议题」')
+      if (!dept) errors.push('缺少经办部门')
+      if (!submitter) errors.push('缺少经办人')
+      if (!presenter) errors.push('缺少汇报人')
+      const targetMeetings = meetingsRaw.split(/[、,;；]/).map(s => s.trim()).filter(Boolean)
+      if (targetMeetings.length === 0) errors.push('缺少拟上会议')
+      const unknown = targetMeetings.filter(n => !allowedMeetings.includes(n))
+      if (unknown.length) errors.push(`拟上会议不在字典中：${unknown.join('、')}`)
+      const mins = Number(minsRaw)
+      if (!minsRaw || !Number.isFinite(mins) || mins <= 0) errors.push('汇报时长须为正整数分钟')
+      if (title && topics.some(t => t.title === title)) errors.push('与系统已有议题名称完全重复')
+      const dupInFile = grid.slice(1).filter((r, j) => j !== i && (r[idx('议题名称')] ?? '').trim() === title).length
+      if (title && dupInFile) errors.push('文件内议题名称重复')
+      const ok = errors.length === 0
+      const topic: Topic | undefined = ok ? {
+        id: `T${String(Date.now()).slice(-6)}${i}`,
+        title,
+        submitter,
+        dept,
+        submittedAt: new Date().toISOString().slice(0, 10),
+        status: '待安排',
+        priority: kind === '总经办议题' && get('紧急程度') === '紧急' ? '高' : '中',
+        background: get('备注'),
+        objective: '',
+        aiSummary: '',
+        decisionPoints: [],
+        presenter,
+        estimatedMins: mins,
+        materials: ['（导入待补材料）'],
+        isTradeSecret: yesNo(get('是否商密')),
+        isMajorDecision: kind === '总经办议题' && yesNo(get('是否三重一大')),
+        urgency: kind === '总经办议题' ? ((get('紧急程度') as '紧急' | '急' | '一般') || '一般') : '一般',
+        targetMeetings,
+        attendDepts: get('列席部门'),
+        attendEnterprises: get('列席企业'),
+        notes: get('备注'),
+        topicKind: kind,
+      } : undefined
+      return { ok, errors, topic, rawTitle: title || `第 ${i + 2} 行` }
+    })
+    setFileName(f.name)
+    setRows(mapped)
+  }
+
+  const valid = rows.filter(r => r.ok && r.topic).map(r => r.topic!) as Topic[]
+
+  return (
+    <ModalShell
+      title="Excel 批量导入议题"
+      kicker="议题收集"
+      width={820}
+      expand
+      onClose={onClose}
+      footer={
+        <ModalFoot left={<span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{fileName ? `${fileName} · 可导入 ${valid.length} / ${rows.length} 行` : '请先下载模板并填写'}</span>}>
+          <Btn label="取消" variant="ghost" onClick={onClose} />
+          <Btn label={`导入 ${valid.length} 条`} variant="primary" disabled={valid.length === 0} onClick={() => { onImport(valid); onClose() }} />
+        </ModalFoot>
+      }
+    >
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <Btn label="下载 Excel 模板" variant="secondary" onClick={downloadTopicTemplate} />
+        <input ref={fileRef} type="file" accept=".xls,.csv,.txt,application/vnd.ms-excel,text/csv" style={{ display: 'none' }} onChange={handleFile} />
+        <Btn label="选择文件导入" variant="primary" onClick={() => fileRef.current?.click()} />
+      </div>
+      <div className="field-note" style={{ marginBottom: 12 }}>
+        请使用模板填写：议题名称、议题类型（总经办议题 / 经营管理会议题）、经办部门、经办人、汇报人、拟上会议（多个用顿号分隔）、汇报时长（分钟）。经营管理会议题无需填三重一大与紧急程度。
+      </div>
+      {rows.length === 0 && <div className="empty">尚未选择文件</div>}
+      {rows.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {rows.map((r, i) => (
+            <div key={i} style={{ padding: '10px 12px', borderRadius: 7, border: `1px solid ${r.ok ? 'var(--border)' : '#e8d0d0'}`, background: r.ok ? 'var(--secondary)' : '#fdf6f6' }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{r.rawTitle}</div>
+              <div style={{ fontSize: 12, color: r.ok ? '#2f5d4a' : '#8b3a3a', marginTop: 4 }}>
+                {r.ok ? '校验通过' : r.errors.join('；')}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </ModalShell>
+  )
+}
+
 function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>> }) {
   const [filter, setFilter] = useState<TopicStatus | '全部'>('全部')
   const [modal, setModal] = useState<{ topic: Topic | null } | null>(null)
+  const [showImport, setShowImport] = useState(false)
   const [toast, setToast] = useState('')
 
   const filtered = filter === '全部' ? topics : topics.filter(t => t.status === filter)
@@ -2529,6 +3026,11 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
     }
   }
 
+  const handleImport = (rows: Topic[]) => {
+    setTopics(prev => [...rows, ...prev])
+    showToast(`已导入 ${rows.length} 条议题。`)
+  }
+
   const handleLock = (id: string) => {
     setTopics(prev => prev.map(t => t.id === id ? { ...t, status: '锁定中' } : t))
     showToast('议题已锁定，申报人将无法再修改。')
@@ -2539,9 +3041,13 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
 
   return (
     <div>
+      {showImport && (
+        <TopicImportModal topics={topics} onClose={() => setShowImport(false)} onImport={handleImport} />
+      )}
       {modal !== undefined && modal !== null && (
         <TopicFormModal
           topic={modal.topic}
+          existingTopics={topics}
           onClose={() => setModal(null)}
           onSave={handleSave}
           onLock={handleLock}
@@ -2550,8 +3056,13 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
 
       <SectionHeader
         title="议题管理"
-        subtitle="议题全生命周期管理：申报 → 安排 → 锁定 → 上会"
-        action={<Btn label="+ 申报议题" variant="primary" onClick={() => setModal({ topic: null })} />}
+        subtitle="议题全生命周期管理：申报 → 安排 → 锁定 → 上会。支持 Excel 批量导入线下收集的议题。"
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn label="Excel 导入" variant="secondary" onClick={() => setShowImport(true)} />
+            <Btn label="+ 申报议题" variant="primary" onClick={() => setModal({ topic: null })} />
+          </div>
+        }
       />
 
       {toast && (
@@ -2579,14 +3090,14 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--secondary)', borderBottom: '1px solid var(--border)' }}>
-              {['编号', '议题名称', '经办部门', '经办人', '汇报人', '紧急程度', '时长', '状态', '操作'].map(h => (
+              {['编号', '议题类型', '议题名称', '经办部门', '经办人', '汇报人', '紧急程度', '时长', '状态', '操作'].map(h => (
                 <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={9} style={{ padding: '48px 0', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 13 }}>暂无相关议题</td></tr>
+              <tr><td colSpan={10} style={{ padding: '48px 0', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 13 }}>暂无相关议题</td></tr>
             )}
             {filtered.map(t => {
               const canEdit = t.status === '待安排' || t.status === '已安排'
@@ -2596,6 +3107,7 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
                   onMouseOut={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={{ padding: '12px 14px', fontSize: 12, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{t.id}</td>
+                  <td style={{ padding: '12px 14px' }}><Badge label={t.topicKind ?? '总经办议题'} color={t.topicKind === '经营管理会议题' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-700 border border-slate-200'} /></td>
                   <td style={{ padding: '12px 14px', maxWidth: 260 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -2605,7 +3117,7 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
                   <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--muted-foreground)' }}>{t.dept}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13 }}>{t.submitter}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--muted-foreground)' }}>{t.presenter}</td>
-                  <td style={{ padding: '12px 14px' }}><Badge label={t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')} color={urgencyColor[t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')]} /></td>
+                  <td style={{ padding: '12px 14px' }}>{t.topicKind === '经营管理会议题' ? <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>—</span> : <Badge label={t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')} color={urgencyColor[t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')]} />}</td>
                   <td style={{ padding: '12px 14px', fontSize: 12, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{t.estimatedMins}min</td>
                   <td style={{ padding: '12px 14px' }}><Badge label={t.status} color={topicStatusColor[t.status]} /></td>
                   <td style={{ padding: '12px 14px' }}>
@@ -3081,8 +3593,8 @@ function wParagraph(text: string, kind: 'title' | 'heading' | 'body') {
   return `<w:p><w:pPr><w:spacing w:after="80"/><w:ind w:firstLine="480"/></w:pPr><w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/>${rFonts}</w:rPr><w:t xml:space="preserve">${t || ' '}</w:t></w:r></w:p>`
 }
 
-function minutesDraftLines(meeting: Meeting): { text: string; kind: 'title' | 'heading' | 'body' }[] {
-  const typeName = meetingTypeName(meeting.typeId)
+function minutesDraftLines(meeting: Meeting, types: MeetingTypeDef[] = INIT_MEETING_TYPES): { text: string; kind: 'title' | 'heading' | 'body' }[] {
+  const typeName = meetingTypeName(meeting.typeId, types)
   const topics = meeting.meetingTopics
     .slice()
     .sort((a, b) => a.order - b.order)
@@ -3122,9 +3634,9 @@ function minutesDraftLines(meeting: Meeting): { text: string; kind: 'title' | 'h
   ]
 }
 
-function buildMinutesDocx(meeting: Meeting) {
+function buildMinutesDocx(meeting: Meeting, types: MeetingTypeDef[] = INIT_MEETING_TYPES) {
   const enc = new TextEncoder()
-  const body = minutesDraftLines(meeting).map(l => wParagraph(l.text, l.kind)).join('')
+  const body = minutesDraftLines(meeting, types).map(l => wParagraph(l.text, l.kind)).join('')
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1800" w:bottom="1440" w:left="1800"/></w:sectPr></w:body></w:document>`
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -3161,6 +3673,7 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
   topics: Topic[]
   setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
 }) {
+  const { meetingTypes } = useMeetingCatalog()
   const archived = INIT_MINUTES[meeting.id]
   const fileRef = useRef<HTMLInputElement>(null)
   const [minutesFile, setMinutesFile] = useState<{ name: string; size: string } | null>(
@@ -3184,7 +3697,7 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
   const generateDraft = () => {
     setDraftState('generating')
     setTimeout(() => {
-      const blob = buildMinutesDocx(meeting)
+      const blob = buildMinutesDocx(meeting, meetingTypes)
       const name = `${meeting.title}会议纪要（初版）.docx`
       const file = { name, size: formatBytes(blob.size), blob }
       setDraftFile(file)
@@ -3271,7 +3784,7 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>生成初版会议纪要</div>
               <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4, lineHeight: 1.6 }}>
-                基于 AI 听记，套用「{meetingTypeName(meeting.typeId)}」纪要模板生成 Word 初版。请下载后在本地核改，再导入终版。
+                基于 AI 听记，套用「{meetingTypeName(meeting.typeId, meetingTypes)}」纪要模板生成 Word 初版。请下载后在本地核改，再导入终版。
               </div>
             </div>
             <Btn
@@ -3726,6 +4239,13 @@ function IconGrid({ c }: { c: string }) {
     </svg>
   )
 }
+function IconList({ c }: { c: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2.5 4h11M2.5 8h11M2.5 12h7" stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  )
+}
 function IconClipboard({ c }: { c: string }) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -3795,20 +4315,23 @@ function IconLogo({ c }: { c: string }) {
 type NavItem = { id: NavSection; label: string; icon: (c: string) => React.ReactNode; group: string }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard',    label: '管理驾驶舱', icon: c => <IconGrid c={c} />,      group: '概览' },
-  { id: 'topics',       label: '议题管理',   icon: c => <IconClipboard c={c} />, group: '会前准备' },
-  { id: 'meetings',     label: '会议管理',   icon: c => <IconCalendar c={c} />,  group: '会前准备' },
-  { id: 'meeting-live', label: '会中管控',   icon: c => <IconPlay c={c} />,      group: '会议进行' },
-  { id: 'minutes',      label: '会议纪要',   icon: c => <IconDoc c={c} />,       group: '会后处理' },
-  { id: 'actions',      label: '交办事项',   icon: c => <IconPin c={c} />,       group: '会后处理' },
+  { id: 'dashboard',     label: '管理驾驶舱', icon: c => <IconGrid c={c} />,      group: '概览' },
+  { id: 'meeting-types', label: '会议类型',   icon: c => <IconList c={c} />,      group: '会前准备' },
+  { id: 'topics',        label: '议题管理',   icon: c => <IconClipboard c={c} />, group: '会前准备' },
+  { id: 'meetings',      label: '会议管理',   icon: c => <IconCalendar c={c} />,  group: '会前准备' },
+  { id: 'meeting-live',  label: '会中管控',   icon: c => <IconPlay c={c} />,      group: '会议进行' },
+  { id: 'minutes',       label: '会议纪要',   icon: c => <IconDoc c={c} />,       group: '会后处理' },
+  { id: 'actions',       label: '交办事项',   icon: c => <IconPin c={c} />,       group: '会后处理' },
 ]
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('meetings')
   const [topics, setTopics] = useState<Topic[]>(INIT_TOPICS)
+  const [meetingTypes, setMeetingTypes] = useState<MeetingTypeDef[]>(INIT_MEETING_TYPES)
   const groups = [...new Set(NAV_ITEMS.map(i => i.group))]
 
   return (
+    <MeetingCatalogContext.Provider value={{ meetingTypes, setMeetingTypes }}>
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--background)' }}>
       <aside style={{ width: 'var(--sidebar-width)', background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
 
@@ -3818,7 +4341,7 @@ export default function App() {
               <IconLogo c="#12203a" />
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f1ea', lineHeight: 1.25, letterSpacing: '0.04em', fontFamily: "'Noto Serif SC', serif" }}>会枢</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f1ea', lineHeight: 1.25, letterSpacing: '0.04em', fontFamily: "'Noto Serif SC', serif" }}>智会</div>
               <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.45)', marginTop: 3 }}>议而有决 · 决而有行</div>
             </div>
           </div>
@@ -3887,6 +4410,7 @@ export default function App() {
         </header>
         <main style={{ flex: 1, padding: '28px 32px' }}>
           {activeSection === 'dashboard' && <Dashboard onNav={setActiveSection} topics={topics} />}
+          {activeSection === 'meeting-types' && <MeetingTypesView />}
           {activeSection === 'topics' && <TopicsView topics={topics} setTopics={setTopics} />}
           {activeSection === 'meetings' && <MeetingsView topics={topics} setTopics={setTopics} onNav={setActiveSection} />}
           {activeSection === 'meeting-live' && <MeetingLive />}
@@ -3895,5 +4419,6 @@ export default function App() {
         </main>
       </div>
     </div>
+    </MeetingCatalogContext.Provider>
   )
 }
