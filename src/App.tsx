@@ -347,6 +347,27 @@ function categoryForTopic(topic: Topic): MeetingTypeCategory {
   return topic.topicKind === '经营管理会议题' ? '经营管理会' : '总经办'
 }
 
+function stripTopicFromMeetings(meetings: Meeting[], topicId: string): Meeting[] {
+  return meetings.map(m => ({
+    ...m,
+    meetingTopics: m.meetingTopics
+      .filter(mt => mt.topicId !== topicId)
+      .map((mt, i) => ({ ...mt, order: i + 1 })),
+  }))
+}
+
+function releaseTopicsAfterMeetingDelete(topics: Topic[], meetings: Meeting[], deleted: Meeting): Topic[] {
+  const remaining = meetings.filter(m => m.id !== deleted.id)
+  const deletedTopicIds = new Set(deleted.meetingTopics.map(mt => mt.topicId))
+  return topics.map(t => {
+    if (!deletedTopicIds.has(t.id)) return t
+    const stillScheduled = remaining.some(m => m.meetingTopics.some(mt => mt.topicId === t.id))
+    if (stillScheduled) return t
+    if (t.status === '已安排' || t.status === '锁定中') return { ...t, status: '待安排' as TopicStatus }
+    return t
+  })
+}
+
 function categoryForMeeting(meeting: Meeting, types: MeetingTypeDef[]): MeetingTypeCategory | null {
   return types.find(t => t.id === meeting.typeId)?.category ?? null
 }
@@ -486,10 +507,10 @@ const INIT_TOPICS: Topic[] = [
     id: 'T004',
     title: '南方新能源子公司战略投资协议审批',
     submitter: '陈志远', dept: '投资发展部', submittedAt: '2026-08-07',
-    status: '锁定中', priority: '高',
+    status: '已安排', priority: '高',
     background: '集团战略布局清洁能源赛道，南方新能源是广东、广西地区头部光伏运营商，已在两地完成装机1.2GW，标的估值稳健，现金流充沛。',
     objective: '审批初始参股投资6000万元、20%股权，获取后续跟投权，完成战略卡位。',
-    aiSummary: '拟参股南方新能源6000万元获20%股权，布局清洁能源。标的公司装机1.2GW，现金流稳定。该议题已锁定，等待上会审议。',
+    aiSummary: '拟参股南方新能源6000万元获20%股权，布局清洁能源。标的公司装机1.2GW，现金流稳定。该议题已纳入办公会议程，待上会审议。',
     decisionPoints: ['投资金额及股权比例审批', '尽调报告确认', '后续跟投权条款授权'],
     presenter: '陈志远', estimatedMins: 20,
     materials: ['投资尽调报告.pdf', '标的公司财务数据.xlsx'],
@@ -623,7 +644,7 @@ const INIT_MEETINGS: Meeting[] = [
       { topicId: 'T003', order: 1 },
       { topicId: 'T004', order: 2 },
     ],
-    status: '进行中',
+    status: '筹备中',
     notes: '',
   },
   {
@@ -1126,58 +1147,71 @@ function ModalFoot({ left, children }: { left?: React.ReactNode; children: React
 
 // ─── New Meeting Modal ────────────────────────────────────────────────────────
 
-function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
+function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office', meeting = null }: {
   onClose: () => void
   onSave: (m: Meeting) => void
   defaultTypeId?: string
+  meeting?: Meeting | null
 }) {
   const { meetingTypes } = useMeetingCatalog()
   const { role, roles } = usePermission()
   const enabledTypes = meetingTypes.filter(t => t.enabled && meetingTypeInRoleScope(t, role, roles))
-  const typeMeta = enabledTypes.find(t => t.id === defaultTypeId) ?? enabledTypes[0] ?? INIT_MEETING_TYPES[0]
-  const [typeId, setTypeId] = useState(typeMeta.id)
-  const [title, setTitle] = useState(typeMeta.name)
-  const [date, setDate] = useState('2026-09-12')
-  const [time, setTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('12:00')
-  const [location, setLocation] = useState('总部大厦28层第一会议室')
-  const [chair, setChair] = useState(typeMeta.usualChair || '马总（集团总经理）')
-  const [organizer, setOrganizer] = useState('王总助')
-  const [organizeDept, setOrganizeDept] = useState('集团办公室')
-  const [attendees, setAttendees] = useState<string[]>([])
-  const [observers, setObservers] = useState<string[]>([])
-  const [disciplineStaff, setDisciplineStaff] = useState<string[]>([])
+  const typeMeta = enabledTypes.find(t => t.id === (meeting?.typeId ?? defaultTypeId)) ?? enabledTypes[0] ?? INIT_MEETING_TYPES[0]
+  const isEdit = !!meeting
+  const [typeId, setTypeId] = useState(meeting?.typeId ?? typeMeta.id)
+  const [title, setTitle] = useState(meeting?.title ?? typeMeta.name)
+  const [date, setDate] = useState(meeting?.date ?? '2026-09-12')
+  const [time, setTime] = useState(meeting?.time ?? '09:00')
+  const [endTime, setEndTime] = useState(meeting?.endTime ?? '12:00')
+  const [location, setLocation] = useState(meeting?.location ?? '总部大厦28层第一会议室')
+  const [chair, setChair] = useState(meeting?.chair ?? (typeMeta.usualChair || '马总（集团总经理）'))
+  const [organizer, setOrganizer] = useState(meeting?.organizer ?? '王总助')
+  const [organizeDept, setOrganizeDept] = useState(meeting?.organizeDept ?? '集团办公室')
+  const [attendees, setAttendees] = useState<string[]>(meeting?.attendees ?? [])
+  const [observers, setObservers] = useState<string[]>(meeting?.observers ?? [])
+  const [disciplineStaff, setDisciplineStaff] = useState<string[]>(meeting?.disciplineStaff ?? [])
   const [showAttendeePicker, setShowAttendeePicker] = useState(false)
+  const [rosterSeeded, setRosterSeeded] = useState(isEdit)
 
   const selectedType = meetingTypes.find(t => t.id === typeId) ?? typeMeta
 
   useEffect(() => {
+    if (isEdit && rosterSeeded) return
     setAttendees(selectedType.usualAttendees)
     setObservers(selectedType.usualObservers)
     setDisciplineStaff(selectedType.usualDiscipline)
     if (selectedType.usualChair) setChair(selectedType.usualChair)
-  }, [typeId, meetingTypes])
+    setRosterSeeded(true)
+  }, [typeId, meetingTypes, isEdit, rosterSeeded])
 
   const handleSave = () => {
-    const id = `M${date.replace(/-/g, '').slice(0, 6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-    onSave({
-      id, title, typeId, date, time, endTime, location, chair,
-      attendees, observers, disciplineStaff, organizer, organizeDept,
-      meetingTopics: [], status: '筹备中', notes: '',
-    })
+    if (isEdit && meeting) {
+      onSave({
+        ...meeting,
+        title, typeId, date, time, endTime, location, chair,
+        attendees, observers, disciplineStaff, organizer, organizeDept,
+      })
+    } else {
+      const id = `M${date.replace(/-/g, '').slice(0, 6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+      onSave({
+        id, title, typeId, date, time, endTime, location, chair,
+        attendees, observers, disciplineStaff, organizer, organizeDept,
+        meetingTopics: [], status: '筹备中', notes: '',
+      })
+    }
     onClose()
   }
 
   return (
     <ModalShell
-      title="新建会议"
+      title={isEdit ? '编辑会议' : '新建会议'}
       kicker="会前准备"
       width={680}
       onClose={onClose}
       footer={
         <ModalFoot>
           <Btn label="取消" variant="ghost" onClick={onClose} />
-          <Btn label="创建会议" variant="primary" onClick={handleSave} disabled={!title || !date} />
+          <Btn label={isEdit ? '保存修改' : '创建会议'} variant="primary" onClick={handleSave} disabled={!title || !date} />
         </ModalFoot>
       }
     >
@@ -1188,12 +1222,14 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
               key={t.id}
               type="button"
               className={`choice${typeId === t.id ? ' is-on' : ''}`}
-              onClick={() => { setTypeId(t.id); setTitle(t.name) }}
+              onClick={() => { setTypeId(t.id); if (!isEdit) setTitle(t.name); setRosterSeeded(false) }}
+              disabled={isEdit}
             >
               {t.name}
             </button>
           ))}
         </div>
+        {isEdit && <div className="field-note">编辑时不可更换会议类型</div>}
       </Field>
 
       <Field label="会议名称" required>
@@ -1236,7 +1272,7 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office' }: {
       </div>
 
       <Field label={`参会人员（${attendees.length}人）`}>
-        {(selectedType.usualAttendees.length > 0 || selectedType.usualObservers.length > 0 || selectedType.usualDiscipline.length > 0) && (
+        {!isEdit && (selectedType.usualAttendees.length > 0 || selectedType.usualObservers.length > 0 || selectedType.usualDiscipline.length > 0) && (
           <div style={{ fontSize: 12, color: '#2f5d4a', marginBottom: 8 }}>
             已按「{selectedType.name}」常见人员自动带入，可继续增删
           </div>
@@ -1295,7 +1331,7 @@ function TopicPickerModal({ topics, alreadyPicked, meetingTypeId, onClose, onAdd
   const { meetingTypes } = useMeetingCatalog()
   const typeName = meetingTypeName(meetingTypeId, meetingTypes)
   const available = topics.filter(t =>
-    (t.status === '待安排' || t.status === '已安排')
+    t.status === '待安排'
     && !alreadyPicked.includes(t.id)
     && (t.targetMeetings ?? []).includes(typeName)
   )
@@ -1467,19 +1503,22 @@ function NotifyModal({ meeting, onClose, onSend }: {
 
 // ─── Meeting Detail View ──────────────────────────────────────────────────────
 
-function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: {
+function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete, onNav }: {
   meeting: Meeting
   topics: Topic[]
   setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
   onBack: () => void
   onUpdate: (m: Meeting) => void
+  onDelete?: () => void
   onNav: (s: NavSection, meetingId?: string) => void
 }) {
   const [showPicker, setShowPicker] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [actionToast, setActionToast] = useState('')
   const [showNotifyModal, setShowNotifyModal] = useState(false)
   const [detailTopic, setDetailTopic] = useState<Topic | null>(null)
   const meetingTopics = [...meeting.meetingTopics].sort((a, b) => a.order - b.order)
+  const canEditAgenda = meeting.status !== '已结束'
 
   const fireToast = (msg: string) => { setActionToast(msg); setTimeout(() => setActionToast(''), 3200) }
 
@@ -1499,6 +1538,11 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
   }
 
   const removeTopic = (topicId: string) => {
+    const topic = topics.find(t => t.id === topicId)
+    if (topic && (topic.status === '锁定中' || topic.status === '已上会')) {
+      fireToast(topic.status === '已上会' ? '已上会议题不可移出议程' : '议题已锁定，不可移出议程')
+      return
+    }
     const updated = {
       ...meeting,
       meetingTopics: meeting.meetingTopics
@@ -1506,6 +1550,11 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
         .map((mt, i) => ({ ...mt, order: i + 1 })),
     }
     onUpdate(updated)
+    setTopics(prev => prev.map(t => {
+      if (t.id !== topicId) return t
+      if (t.status === '已安排') return { ...t, status: '待安排' }
+      return t
+    }))
   }
 
   const moveUp = (idx: number) => {
@@ -1536,12 +1585,40 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
       ...meeting,
       meetingTopics: [...meeting.meetingTopics, { topicId, order: meeting.meetingTopics.length + 1 }],
     })
+    setTopics(prev => prev.map(t => t.id === topicId && t.status === '待安排' ? { ...t, status: '已安排' } : t))
+  }
+
+  const startMeeting = () => {
+    onUpdate({ ...meeting, status: '进行中' })
+    setTopics(prev => prev.map(t =>
+      meeting.meetingTopics.some(mt => mt.topicId === t.id) && (t.status === '已安排' || t.status === '待安排')
+        ? { ...t, status: '锁定中' }
+        : t
+    ))
+    fireToast('会议已开始')
+    onNav('meeting-live', meeting.id)
+  }
+
+  const endMeeting = () => {
+    if (!window.confirm(`确认结束会议「${meeting.title}」？结束后相关议题将标记为已上会。`)) return
+    onUpdate({ ...meeting, status: '已结束' })
+    setTopics(prev => prev.map(t =>
+      meeting.meetingTopics.some(mt => mt.topicId === t.id) ? { ...t, status: '已上会' } : t
+    ))
+    fireToast('会议已结束，相关议题已标记为已上会')
   }
 
   const pickedIds = meetingTopics.map(mt => mt.topicId)
 
   return (
     <div>
+      {showEdit && (
+        <NewMeetingModal
+          meeting={meeting}
+          onClose={() => setShowEdit(false)}
+          onSave={onUpdate}
+        />
+      )}
       {showPicker && (
         <TopicPickerModal
           topics={topics}
@@ -1581,7 +1658,10 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, fontSize: 13, color: 'var(--muted-foreground)' }}>
         <span style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: 500 }} onClick={onBack}>← 会议列表</span>
         <span>›</span>
-        <span style={{ color: 'var(--foreground)' }}>{meeting.title}</span>
+        <span style={{ color: 'var(--foreground)', flex: 1 }}>{meeting.title}</span>
+        {meeting.status !== '已结束' && (
+          <Btn label="编辑会议信息" variant="secondary" small onClick={() => setShowEdit(true)} />
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
@@ -1612,7 +1692,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
                 <span style={{ fontSize: 14, fontWeight: 600 }}>议题安排</span>
                 <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>共 {meetingTopics.length} 项 · 合计 {totalMins} 分钟</span>
               </div>
-              {meeting.status === '筹备中' && (
+              {canEditAgenda && (
                 <Btn label="+ 添加议题" variant="primary" onClick={() => setShowPicker(true)} />
               )}
             </div>
@@ -1672,7 +1752,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
                             value={mins}
                             onClick={e => e.stopPropagation()}
                             onChange={e => updateMins(mt.topicId, Number(e.target.value))}
-                            disabled={meeting.status !== '筹备中'}
+                            disabled={!canEditAgenda}
                             style={{ width: 54, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center', fontWeight: 600, color: 'var(--foreground)', background: '#fafbfd' }}
                           />
                           <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>分钟</span>
@@ -1680,7 +1760,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
                       </div>
 
                       {/* Controls */}
-                      {meeting.status === '筹备中' && (
+                      {canEditAgenda && (
                         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }} onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => moveUp(idx)}
@@ -1696,8 +1776,14 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
                           >▼</button>
                           <button
                             onClick={() => removeTopic(mt.topicId)}
-                            title="移除"
-                            style={{ width: 26, height: 26, border: '1px solid #fecaca', borderRadius: 4, background: '#fef2f2', cursor: 'pointer', fontSize: 12, color: '#dc2626' }}
+                            disabled={t.status === '锁定中' || t.status === '已上会'}
+                            title={t.status === '锁定中' || t.status === '已上会' ? '已锁定/已上会不可移出' : '移除'}
+                            style={{
+                              width: 26, height: 26, border: '1px solid #fecaca', borderRadius: 4, background: '#fef2f2',
+                              cursor: (t.status === '锁定中' || t.status === '已上会') ? 'not-allowed' : 'pointer',
+                              fontSize: 12, color: '#dc2626',
+                              opacity: (t.status === '锁定中' || t.status === '已上会') ? 0.4 : 1,
+                            }}
                           >✕</button>
                         </div>
                       )}
@@ -1758,7 +1844,23 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onNav }: 
               />
 
               {meeting.status === '筹备中' && (
-                <Btn label="开始会议" variant="primary" onClick={() => onNav('meeting-live', meeting.id)} />
+                <Btn label="开始会议" variant="primary" onClick={startMeeting} />
+              )}
+              {meeting.status === '进行中' && (
+                <>
+                  <Btn label="进入会中管控" variant="primary" onClick={() => onNav('meeting-live', meeting.id)} />
+                  <Btn label="结束会议" variant="danger" onClick={endMeeting} />
+                </>
+              )}
+              {onDelete && meeting.status === '筹备中' && (
+                <Btn
+                  label="删除本场会议"
+                  variant="danger"
+                  onClick={() => {
+                    if (!window.confirm(`确认删除会议「${meeting.title}」？`)) return
+                    onDelete()
+                  }}
+                />
               )}
             </div>
           </Card>
@@ -1852,12 +1954,15 @@ function AvatarRow({ names, max = 4 }: { names: string[]; max?: number }) {
 }
 
 // Meetings list for a specific type
-function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onNew, onNav }: {
+function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onDelete, onStart, onEnd, onNew, onNav }: {
   typeId: string
   meetings: Meeting[]
   topics: Topic[]
   onBack: () => void
   onDetail: (id: string) => void
+  onDelete?: (m: Meeting) => void
+  onStart?: (m: Meeting) => void
+  onEnd?: (m: Meeting) => void
   onNew: () => void
   onNav: (s: NavSection, meetingId?: string) => void
 }) {
@@ -1935,10 +2040,30 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onNew, on
                   })}
                 </div>
               )}
-              <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                 <Btn label="查看/编辑" variant="secondary" small onClick={() => onDetail(m.id)} />
-                {m.status !== '已结束' && <Btn label="进入会中" variant="primary" small onClick={() => onNav('meeting-live', m.id)} />}
+                {m.status === '筹备中' && onStart && (
+                  <Btn label="开始会议" variant="primary" small onClick={() => onStart(m)} />
+                )}
+                {m.status === '进行中' && <Btn label="进入会中" variant="primary" small onClick={() => onNav('meeting-live', m.id)} />}
+                {m.status === '进行中' && onEnd && (
+                  <Btn label="结束会议" variant="danger" small onClick={() => {
+                    if (!window.confirm(`确认结束会议「${m.title}」？结束后相关议题将标记为已上会。`)) return
+                    onEnd(m)
+                  }} />
+                )}
                 {m.status === '已结束' && <Btn label="查看纪要" variant="ghost" small onClick={() => onNav('minutes')} />}
+                {onDelete && m.status === '筹备中' && (
+                  <Btn
+                    label="删除"
+                    variant="danger"
+                    small
+                    onClick={() => {
+                      if (!window.confirm(`确认删除会议「${m.title}」？`)) return
+                      onDelete(m)
+                    }}
+                  />
+                )}
               </div>
             </div>
           )
@@ -1967,6 +2092,27 @@ function MeetingsView({ topics, setTopics, meetings, setMeetings, onNav }: {
   const detailMeeting = scopedMeetings.find(m => m.id === detailId) ?? null
   const updateMeeting = (updated: Meeting) => setMeetings(prev => prev.map(m => m.id === updated.id ? updated : m))
   const addMeeting = (m: Meeting) => setMeetings(prev => [m, ...prev])
+  const deleteMeeting = (m: Meeting) => {
+    if (m.status !== '筹备中') return
+    setTopics(prev => releaseTopicsAfterMeetingDelete(prev, meetings, m))
+    setMeetings(prev => prev.filter(x => x.id !== m.id))
+    if (detailId === m.id) setDetailId(null)
+  }
+  const startMeeting = (m: Meeting) => {
+    setMeetings(prev => prev.map(x => x.id === m.id ? { ...x, status: '进行中' } : x))
+    setTopics(prev => prev.map(t =>
+      m.meetingTopics.some(mt => mt.topicId === t.id) && (t.status === '已安排' || t.status === '待安排')
+        ? { ...t, status: '锁定中' }
+        : t
+    ))
+    onNav('meeting-live', m.id)
+  }
+  const endMeeting = (m: Meeting) => {
+    setMeetings(prev => prev.map(x => x.id === m.id ? { ...x, status: '已结束' } : x))
+    setTopics(prev => prev.map(t =>
+      m.meetingTopics.some(mt => mt.topicId === t.id) ? { ...t, status: '已上会' } : t
+    ))
+  }
 
   if (detailMeeting) {
     return (
@@ -1976,6 +2122,7 @@ function MeetingsView({ topics, setTopics, meetings, setMeetings, onNav }: {
         setTopics={setTopics}
         onBack={() => setDetailId(null)}
         onUpdate={updateMeeting}
+        onDelete={() => deleteMeeting(detailMeeting)}
         onNav={onNav}
       />
     )
@@ -1997,6 +2144,9 @@ function MeetingsView({ topics, setTopics, meetings, setMeetings, onNav }: {
           topics={topics}
           onBack={() => setSelectedTypeId(null)}
           onDetail={id => setDetailId(id)}
+          onDelete={deleteMeeting}
+          onStart={startMeeting}
+          onEnd={endMeeting}
           onNew={() => setShowNew(true)}
           onNav={onNav}
         />
@@ -3021,18 +3171,23 @@ function MeetingTypesView() {
 
 // ─── Topic Form Modal ─────────────────────────────────────────────────────────
 
-function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock }: {
+function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, onDelete }: {
   topic: Topic | null
   existingTopics?: Topic[]
   onClose: () => void
   onSave: (t: Topic) => void
   onLock?: (id: string) => void
+  onDelete?: (id: string) => void
 }) {
   const { meetingTypes } = useMeetingCatalog()
   const { role, roles, userName } = usePermission()
   const isManager = roleIsManager(role, roles)
   const isCreate = topic === null
+  // 待安排、已安排可改；锁定中 / 已上会（含材料）只读
   const isEditable = isCreate || topic.status === '待安排' || topic.status === '已安排'
+  const readOnlyHint = !isCreate && !isEditable
+    ? (topic.status === '已上会' ? '议题已上会，内容与汇报材料不可修改' : '议题已锁定，内容与汇报材料不可修改')
+    : undefined
   const urgencyFromPriority = (p?: Priority): '紧急' | '急' | '一般' =>
     p === '高' ? '紧急' : p === '低' ? '一般' : '急'
 
@@ -3176,7 +3331,23 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock }:
       expand
       onClose={onClose}
       footer={
-        <ModalFoot left={!isCreate ? <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{isEditable ? '修改后请保存' : '该议题已锁定，仅可查看'}</span> : undefined}>
+        <ModalFoot left={
+          !isCreate && onDelete ? (
+            <Btn
+              label="删除议题"
+              variant="danger"
+              small
+              onClick={() => {
+                if (!topic) return
+                onDelete(topic.id)
+              }}
+            />
+          ) : !isCreate ? (
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+              {isEditable ? '修改后请保存' : (readOnlyHint ?? '仅可查看')}
+            </span>
+          ) : undefined
+        }>
           <Btn label="关闭" variant="ghost" onClick={onClose} />
           {!isCreate && topic.status === '已安排' && onLock && (
             <Btn label="锁定议题" variant="danger" onClick={() => { onLock(topic.id); onClose() }} />
@@ -3419,6 +3590,9 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock }:
               onClick={() => fileRef.current?.click()}
             />
           </>
+        )}
+        {!isEditable && readOnlyHint && (
+          <div className="field-note" style={{ marginBottom: 8 }}>{readOnlyHint}</div>
         )}
         {files.length === 0 && !isEditable && <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>暂无附件</div>}
         {files.map(f => (
@@ -3715,7 +3889,12 @@ function TopicImportModal({ topics, onClose, onImport }: {
   )
 }
 
-function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.Dispatch<React.SetStateAction<Topic[]>> }) {
+function TopicsView({ topics, setTopics, meetings, setMeetings }: {
+  topics: Topic[]
+  setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
+  meetings: Meeting[]
+  setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>
+}) {
   const { role, roles, userName } = usePermission()
   const isManager = roleIsManager(role, roles)
   const scope = roleScopeCategory(role, roles)
@@ -3728,6 +3907,24 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
   const filtered = filter === '全部' ? scopedTopics : scopedTopics.filter(t => t.status === filter)
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
+
+  const canDeleteTopic = (t: Topic) => {
+    if (t.status !== '待安排') return false
+    if (isManager) return true
+    return t.submitter === userName || t.presenter === userName
+  }
+
+  const handleDelete = (t: Topic) => {
+    if (t.status !== '待安排') {
+      showToast('仅「待安排」状态的议题可以删除。')
+      return
+    }
+    if (!window.confirm(`确认删除议题「${t.title}」？`)) return
+    setTopics(prev => prev.filter(x => x.id !== t.id))
+    setMeetings(prev => stripTopicFromMeetings(prev, t.id))
+    setModal(null)
+    showToast('议题已删除。')
+  }
 
   const handleSave = (saved: Topic) => {
     const isNew = saved.id.startsWith('T') && !INIT_TOPICS.some(t => t.id === saved.id) && !topics.some(t => t.id === saved.id)
@@ -3750,7 +3947,7 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
 
   const handleLock = (id: string) => {
     setTopics(prev => prev.map(t => t.id === id ? { ...t, status: '锁定中' } : t))
-    showToast('议题已锁定，申报人将无法再修改。')
+    showToast('议题已锁定，内容与汇报材料均不可再修改。')
   }
 
   const FILTERS: (TopicStatus | '全部')[] = ['全部', '待安排', '已安排', '锁定中', '已上会']
@@ -3771,6 +3968,7 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
           onClose={() => setModal(null)}
           onSave={handleSave}
           onLock={isManager ? handleLock : undefined}
+          onDelete={modal.topic && canDeleteTopic(modal.topic) ? () => handleDelete(modal.topic!) : undefined}
         />
       )}
 
@@ -3845,6 +4043,9 @@ function TopicsView({ topics, setTopics }: { topics: Topic[]; setTopics: React.D
                       <Btn label={canEdit ? '编辑' : '查看'} variant="ghost" small onClick={() => setModal({ topic: t })} />
                       {isManager && t.status === '已安排' && (
                         <Btn label="锁定" variant="danger" small onClick={() => { handleLock(t.id) }} />
+                      )}
+                      {canDeleteTopic(t) && (
+                        <Btn label="删除" variant="danger" small onClick={() => handleDelete(t)} />
                       )}
                     </div>
                   </td>
@@ -3931,10 +4132,11 @@ function MeetingLiveHub({ liveMeetings, meetingTypes, onEnter }: {
   )
 }
 
-function MeetingLiveSession({ meeting, topics, onBack }: {
+function MeetingLiveSession({ meeting, topics, onBack, onEnd }: {
   meeting: Meeting
   topics: Topic[]
   onBack: () => void
+  onEnd: () => void
 }) {
   const m = meeting
   const meetingTopics = [...m.meetingTopics].sort((a, b) => a.order - b.order).map(mt => topics.find(t => t.id === mt.topicId)!).filter(Boolean)
@@ -3980,15 +4182,24 @@ function MeetingLiveSession({ meeting, topics, onBack }: {
           <span style={{ fontSize: 12, fontWeight: 600, color: '#9a7b3a' }}>进行中</span>
         </div>
         {/* Title */}
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.3 }}>{m.title}</div>
         </div>
         {/* Meta */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 0, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 0, alignItems: 'center' }}>
           {[`${m.date}`, m.time, m.location, `主持 ${m.chair}`].map((item, i) => (
             <span key={i} style={{ fontSize: 12, color: 'var(--muted-foreground)', padding: '0 14px', borderLeft: i > 0 ? '1px solid var(--border)' : 'none' }}>{item}</span>
           ))}
         </div>
+        <Btn
+          label="结束会议"
+          variant="danger"
+          small
+          onClick={() => {
+            if (!window.confirm(`确认结束会议「${m.title}」？结束后相关议题将标记为已上会。`)) return
+            onEnd()
+          }}
+        />
       </div>
 
       {/* ── Progress strip ── */}
@@ -4137,9 +4348,11 @@ function MeetingLiveSession({ meeting, topics, onBack }: {
   )
 }
 
-function MeetingLive({ meetings, topics, selectedId, onSelect }: {
+function MeetingLive({ meetings, setMeetings, topics, setTopics, selectedId, onSelect }: {
   meetings: Meeting[]
+  setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>
   topics: Topic[]
+  setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
   selectedId: string | null
   onSelect: (id: string | null) => void
 }) {
@@ -4155,7 +4368,20 @@ function MeetingLive({ meetings, topics, selectedId, onSelect }: {
     return <MeetingLiveHub liveMeetings={liveMeetings} meetingTypes={meetingTypes} onEnter={onSelect} />
   }
 
-  return <MeetingLiveSession meeting={meeting} topics={topics} onBack={() => onSelect(null)} />
+  return (
+    <MeetingLiveSession
+      meeting={meeting}
+      topics={topics}
+      onBack={() => onSelect(null)}
+      onEnd={() => {
+        setMeetings(prev => prev.map(m => m.id === meeting.id ? { ...m, status: '已结束' } : m))
+        setTopics(prev => prev.map(t =>
+          meeting.meetingTopics.some(mt => mt.topicId === t.id) ? { ...t, status: '已上会' } : t
+        ))
+        onSelect(null)
+      }}
+    />
+  )
 }
 
 // ─── Minutes ──────────────────────────────────────────────────────────────────
@@ -4752,7 +4978,6 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
             ) : (
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--primary)' }}>
                 <span>已同步 {tasks.filter(t => t.checked).length} 条督办事项至 TB 项目任务</span>
-                <button onClick={() => setConfirmed(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 12, color: 'var(--muted-foreground)', cursor: 'pointer' }}>重新编辑</button>
               </div>
             )}
           </Card>
@@ -4853,14 +5078,9 @@ function ActionDetailModal({ item, onClose }: { item: ActionItem; onClose: () =>
       width={620}
       onClose={onClose}
       footer={
-        item.status === '待确认关闭'
-          ? (
-            <ModalFoot left={<span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>负责人已提交关闭申请</span>}>
-              <Btn label="驳回" variant="danger" onClick={onClose} />
-              <Btn label="确认关闭" variant="primary" onClick={onClose} />
-            </ModalFoot>
-          )
-          : <ModalFoot><Btn label="关闭" variant="ghost" onClick={onClose} /></ModalFoot>
+        <ModalFoot left={<span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>跟进、办结请在 TB 中操作</span>}>
+          <Btn label="关闭" variant="ghost" onClick={onClose} />
+        </ModalFoot>
       }
     >
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
@@ -4993,7 +5213,11 @@ function ActionsView({ meetings }: { meetings: Meeting[] }) {
       {detailItem && <ActionDetailModal item={detailItem} onClose={() => setDetailItem(null)} />}
       {showNew && <NewActionModal onClose={() => setShowNew(false)} />}
 
-      <SectionHeader title="交办事项管理" subtitle={`会议决议转化的交办事项，实现闭环跟踪与阶段性汇报${scope ? ` · 当前仅显示${scope}相关事项` : ''}`} action={<Btn label="+ 新建事项" variant="primary" onClick={() => setShowNew(true)} />} />
+      <SectionHeader
+        title="交办事项管理"
+        subtitle={`会议决议同步至 TB 后的交办一览；可在此新建事项。跟进与办结请在 TB 中操作${scope ? ` · 当前仅显示${scope}相关事项` : ''}`}
+        action={<Btn label="+ 新建事项" variant="primary" onClick={() => setShowNew(true)} />}
+      />
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
@@ -5056,12 +5280,8 @@ function ActionsView({ meetings }: { meetings: Meeting[] }) {
               </div>
             </div>
             {a.status === '待确认关闭' && (
-              <div className="warn-bar" style={{ marginTop: 10, justifyContent: 'space-between' }} onClick={e => e.stopPropagation()}>
-                <span>负责人已提交关闭申请，待统筹人确认</span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Btn label="确认关闭" variant="primary" small onClick={() => {}} />
-                  <Btn label="驳回" variant="danger" small onClick={() => {}} />
-                </div>
+              <div className="warn-bar" style={{ marginTop: 10 }} onClick={e => e.stopPropagation()}>
+                负责人已提交关闭申请，请前往 TB 确认办结或驳回
               </div>
             )}
           </div>
@@ -5338,9 +5558,9 @@ export default function App() {
         <main style={{ flex: 1, padding: '28px 32px' }}>
           {activeSection === 'dashboard' && <Dashboard onNav={handleNav} topics={topics} meetings={meetings} />}
           {activeSection === 'meeting-types' && <MeetingTypesView />}
-          {activeSection === 'topics' && <TopicsView topics={topics} setTopics={setTopics} />}
+          {activeSection === 'topics' && <TopicsView topics={topics} setTopics={setTopics} meetings={meetings} setMeetings={setMeetings} />}
           {activeSection === 'meetings' && <MeetingsView topics={topics} setTopics={setTopics} meetings={meetings} setMeetings={setMeetings} onNav={handleNav} />}
-          {activeSection === 'meeting-live' && <MeetingLive meetings={meetings} topics={topics} selectedId={liveMeetingId} onSelect={setLiveMeetingId} />}
+          {activeSection === 'meeting-live' && <MeetingLive meetings={meetings} setMeetings={setMeetings} topics={topics} setTopics={setTopics} selectedId={liveMeetingId} onSelect={setLiveMeetingId} />}
           {activeSection === 'minutes' && <MinutesView topics={topics} setTopics={setTopics} meetings={meetings} />}
           {activeSection === 'actions' && <ActionsView meetings={meetings} />}
           {activeSection === 'roles' && <RolesView />}
