@@ -4641,7 +4641,11 @@ function wParagraph(text: string, kind: 'title' | 'heading' | 'body') {
   return `<w:p><w:pPr><w:spacing w:after="80"/><w:ind w:firstLine="480"/></w:pPr><w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/>${rFonts}</w:rPr><w:t xml:space="preserve">${t || ' '}</w:t></w:r></w:p>`
 }
 
-function minutesDraftLines(meeting: Meeting, types: MeetingTypeDef[] = INIT_MEETING_TYPES): { text: string; kind: 'title' | 'heading' | 'body' }[] {
+function minutesDraftLines(
+  meeting: Meeting,
+  types: MeetingTypeDef[] = INIT_MEETING_TYPES,
+  sources?: { transcriptName?: string; templateName?: string },
+): { text: string; kind: 'title' | 'heading' | 'body' }[] {
   const typeName = meetingTypeName(meeting.typeId, types)
   const topics = meeting.meetingTopics
     .slice()
@@ -4659,10 +4663,13 @@ function minutesDraftLines(meeting: Meeting, types: MeetingTypeDef[] = INIT_MEET
       topicBlocks.push({ text: '会议意见：原则同意相关安排，具体表述请对照听记核改。', kind: 'body' })
     })
   }
+  const sourceNote = sources?.transcriptName && sources?.templateName
+    ? `【生成说明】已结合上传的 AI 听记「${sources.transcriptName}」与纪要模板「${sources.templateName}」自动起草（会议类型：${typeName}）。请下载本 Word 文件后在本地核改，核改完成再导入终版。`
+    : `【生成说明】依据 AI 听记，套用「${typeName}」纪要模板自动起草。请下载本 Word 文件后在本地核改，核改完成再导入终版。`
   return [
     { text: meeting.title, kind: 'title' },
     { text: '会议纪要（初版）', kind: 'title' },
-    { text: `【生成说明】依据 AI 听记，套用「${typeName}」纪要模板自动起草。请下载本 Word 文件后在本地核改，核改完成再导入终版。`, kind: 'body' },
+    { text: sourceNote, kind: 'body' },
     { text: '一、会议概况', kind: 'heading' },
     { text: `时间：${meeting.date} ${meeting.time}–${meeting.endTime}`, kind: 'body' },
     { text: `地点：${meeting.location}`, kind: 'body' },
@@ -4682,9 +4689,13 @@ function minutesDraftLines(meeting: Meeting, types: MeetingTypeDef[] = INIT_MEET
   ]
 }
 
-function buildMinutesDocx(meeting: Meeting, types: MeetingTypeDef[] = INIT_MEETING_TYPES) {
+function buildMinutesDocx(
+  meeting: Meeting,
+  types: MeetingTypeDef[] = INIT_MEETING_TYPES,
+  sources?: { transcriptName?: string; templateName?: string },
+) {
   const enc = new TextEncoder()
-  const body = minutesDraftLines(meeting, types).map(l => wParagraph(l.text, l.kind)).join('')
+  const body = minutesDraftLines(meeting, types, sources).map(l => wParagraph(l.text, l.kind)).join('')
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1800" w:bottom="1440" w:left="1800"/></w:sectPr></w:body></w:document>`
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -4724,6 +4735,8 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
   const { meetingTypes } = useMeetingCatalog()
   const archived = INIT_MINUTES[meeting.id]
   const fileRef = useRef<HTMLInputElement>(null)
+  const transcriptRef = useRef<HTMLInputElement>(null)
+  const templateRef = useRef<HTMLInputElement>(null)
   const [minutesFile, setMinutesFile] = useState<{ name: string; size: string } | null>(
     archived ? { name: archived.fileName, size: archived.fileSize } : null
   )
@@ -4739,19 +4752,35 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
   const [draftState, setDraftState] = useState<'idle' | 'generating' | 'ready'>('idle')
   const [draftFile, setDraftFile] = useState<{ name: string; size: string; blob: Blob } | null>(null)
   const [conclusions, setConclusions] = useState<TopicConclusion[]>(archived?.conclusions ?? [])
+  const [transcriptFile, setTranscriptFile] = useState<{ name: string; size: string } | null>(null)
+  const [templateFile, setTemplateFile] = useState<{ name: string; size: string } | null>(null)
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
 
+  const pickLocalFile = (f: File) => ({
+    name: f.name,
+    size: f.size > 1024 * 1024 ? `${(f.size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`,
+  })
+
+  const canGenerateDraft = !!(transcriptFile && templateFile)
+
   const generateDraft = () => {
+    if (!transcriptFile || !templateFile) {
+      showToast('请先上传 AI 听记和纪要模板后再生成。')
+      return
+    }
     setDraftState('generating')
     setTimeout(() => {
-      const blob = buildMinutesDocx(meeting, meetingTypes)
+      const blob = buildMinutesDocx(meeting, meetingTypes, {
+        transcriptName: transcriptFile.name,
+        templateName: templateFile.name,
+      })
       const name = `${meeting.title}会议纪要（初版）.docx`
       const file = { name, size: formatBytes(blob.size), blob }
       setDraftFile(file)
       setDraftState('ready')
       downloadBlob(blob, name)
-      showToast('初版 Word 已生成，请下载后在本地核改。')
+      showToast('已结合听记与模板生成初版 Word，请下载后本地核改。')
     }, 1800)
   }
 
@@ -4832,24 +4861,99 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>生成初版会议纪要</div>
               <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4, lineHeight: 1.6 }}>
-                基于 AI 听记，套用「{meetingTypeName(meeting.typeId, meetingTypes)}」纪要模板生成 Word 初版。请下载后在本地核改，再导入终版。
+                请分别上传本次会议的 AI 听记，以及要套用的会议纪要模板；系统将结合二者生成 Word 初版。下载核改后再导入终版。
               </div>
             </div>
             <Btn
               label={draftState === 'generating' ? '生成中…' : draftState === 'ready' ? '重新生成' : '生成初版'}
               variant="primary"
               small
-              disabled={draftState === 'generating'}
+              disabled={draftState === 'generating' || !canGenerateDraft}
               onClick={generateDraft}
             />
           </div>
+
+          <input
+            ref={transcriptRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.md"
+            style={{ display: 'none' }}
+            onChange={e => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              setTranscriptFile(pickLocalFile(f))
+              if (draftState === 'ready') setDraftState('idle')
+              e.target.value = ''
+            }}
+          />
+          <input
+            ref={templateRef}
+            type="file"
+            accept=".doc,.docx,.pdf"
+            style={{ display: 'none' }}
+            onChange={e => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              setTemplateFile(pickLocalFile(f))
+              if (draftState === 'ready') setDraftState('idle')
+              e.target.value = ''
+            }}
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>① 上传 AI 听记 <span style={{ color: '#8b3a3a' }}>*</span></div>
+              {!transcriptFile ? (
+                <DropZone
+                  title="点击上传听记文件"
+                  hint="支持 PDF · Word · TXT · Markdown"
+                  onClick={() => transcriptRef.current?.click()}
+                />
+              ) : (
+                <div className="file-row">
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', width: 36 }}>听记</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{transcriptFile.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{transcriptFile.size}</div>
+                  </div>
+                  <Btn label="更换" variant="ghost" small onClick={() => transcriptRef.current?.click()} />
+                  <button type="button" onClick={() => { setTranscriptFile(null); if (draftState === 'ready') setDraftState('idle') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 16 }}>×</button>
+                </div>
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>② 上传纪要模板 <span style={{ color: '#8b3a3a' }}>*</span></div>
+              {!templateFile ? (
+                <DropZone
+                  title="点击上传纪要模板"
+                  hint={`建议使用「${meetingTypeName(meeting.typeId, meetingTypes)}」模板 · Word / PDF`}
+                  onClick={() => templateRef.current?.click()}
+                />
+              ) : (
+                <div className="file-row">
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', width: 36 }}>模板</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{templateFile.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{templateFile.size}</div>
+                  </div>
+                  <Btn label="更换" variant="ghost" small onClick={() => templateRef.current?.click()} />
+                  <button type="button" onClick={() => { setTemplateFile(null); if (draftState === 'ready') setDraftState('idle') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 16 }}>×</button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {draftState === 'idle' && (
-            <div className="field-note">听记已就绪。生成后将得到 Word 附件，请在 Word 中核对时间、决议表述和责任人。</div>
+            <div className="field-note">
+              {canGenerateDraft
+                ? '听记与模板已就绪，点击「生成初版」后将得到 Word 附件，请核对时间、决议表述和责任人。'
+                : '请先完成听记与模板上传，二者齐全后方可生成初版。'}
+            </div>
           )}
           {draftState === 'generating' && (
             <div style={{ fontSize: 13, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0' }}>
               <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse-ring 1s infinite' }} />
-              正在匹配听记与模板，生成 Word 初版…
+              正在结合听记与模板生成 Word 初版…
             </div>
           )}
           {draftState === 'ready' && draftFile && (
@@ -4857,7 +4961,9 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', width: 36 }}>DOC</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{draftFile.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{draftFile.size} · Word 初版，请下载后本地核改</div>
+                <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
+                  {draftFile.size} · 基于「{transcriptFile?.name}」+「{templateFile?.name}」生成，请下载后本地核改
+                </div>
               </div>
               <Btn label="下载" variant="ghost" small onClick={() => downloadBlob(draftFile.blob, draftFile.name)} />
             </div>
@@ -4874,7 +4980,7 @@ function MeetingMinutesPanel({ meeting, topics, setTopics }: {
         </div>
         <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileChange} />
         {!isArchive && draftState !== 'ready' && !minutesFile && (
-          <div className="field-note">请先生成 Word 初版并在本地核改，再导入终版。导入后系统将解析摘要、议题结论并生成交办事项。</div>
+          <div className="field-note">请先上传听记与模板并生成 Word 初版，本地核改后再导入终版。导入后系统将解析摘要、议题结论并生成交办事项。</div>
         )}
         {!minutesFile ? (
           (isArchive || draftState === 'ready') ? (
@@ -5010,7 +5116,7 @@ function MinutesView({ topics, setTopics, meetings }: {
 
   return (
     <div>
-      <SectionHeader title="会议纪要" subtitle={`先生成 Word 初版并本地核改，再导入终版解析摘要、议题结论与督办事项 · 已归档纪要可直接查阅${scope ? ` · 当前仅显示${scope}会议` : ''}`} />
+      <SectionHeader title="会议纪要" subtitle={`先上传 AI 听记与纪要模板生成 Word 初版并本地核改，再导入终版解析摘要、议题结论与督办事项 · 已归档纪要可直接查阅${scope ? ` · 当前仅显示${scope}会议` : ''}`} />
 
       {scopedMeetings.length === 0 && (
         <div className="empty">
