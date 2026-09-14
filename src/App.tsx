@@ -468,14 +468,16 @@ const INIT_TOPICS: Topic[] = [
     id: 'T001',
     title: '2026年第三季度经营业绩分析与四季度策略部署',
     submitter: '李建国', dept: '战略发展部', submittedAt: '2026-08-05',
-    status: '待安排', priority: '高',
+    status: '锁定中', priority: '高',
     background: '集团三季度经营已收官，各板块业绩数据已完成核对，营收同比增长12.4%，净利润8.7亿元。需在总经理办公会上系统汇报并部署四季度策略。',
     objective: '审议三季度经营结果，批准四季度重点市场开拓预算及华北区整合方案。',
     aiSummary: '本议题汇报集团三季度核心经营指标，营收同比增长12.4%，净利润8.7亿元。提出四季度市场攻坚及成本管控举措，申请3.5亿元预算授权。',
     decisionPoints: ['是否批准四季度新市场开拓预算（3.5亿元）', '华北区业务整合方案审批', '年度KPI动态调整授权'],
     presenter: '李建国', estimatedMins: 25,
     materials: ['三季度业绩报告.pdf', '四季度策略PPT.pptx'],
-    targetMeetings: ['广汽集团总经理办公会'],
+    targetMeetings: ['经营调度会', '广汽集团总经理办公会'],
+    topicKind: '经营管理会议题',
+    urgency: '急',
   },
   {
     id: 'T002',
@@ -625,6 +627,48 @@ const INIT_TOPICS: Topic[] = [
       minutesFileSize: '740 KB',
     }],
   },
+  {
+    id: 'T010',
+    title: '华北区渠道下沉与经销商考核办法调整',
+    submitter: '赵国栋', dept: '华东大区', submittedAt: '2026-08-18',
+    status: '锁定中', priority: '高',
+    background: '华北区上半年份额下滑 1.8 个百分点，三四线城市覆盖不足，经销商考核仍偏销量、弱服务。需明确下沉节奏与考核权重。',
+    objective: '审议华北区渠道下沉方案，确认经销商考核办法调整及试点城市名单。',
+    aiSummary: '拟在华北 12 个地级市推进渠道下沉，新增 40 家授权网点；考核由销量 80% 调整为销量 55% + 服务 25% + 库存健康 20%。申请试点授权及专项支持 1800 万元。',
+    decisionPoints: ['下沉城市名单确认', '考核权重调整审批', '专项支持额度授权'],
+    presenter: '赵国栋', estimatedMins: 20,
+    materials: ['华北渠道下沉方案.pdf', '经销商考核办法（修订稿）.docx', '试点城市测算.xlsx'],
+    targetMeetings: ['经营调度会'],
+    topicKind: '经营管理会议题',
+  },
+  {
+    id: 'T011',
+    title: '四季度产能排产与供应链保供预案',
+    submitter: '孙丽华', dept: '采购管理部', submittedAt: '2026-08-20',
+    status: '锁定中', priority: '中',
+    background: '四季度订单同比预计增长 16%，关键芯片与电驱件仍有 2–3 周缺口；需按车型优先级排产并明确保供预案。',
+    objective: '确认四季度排产优先级、保供清单及应急替代方案。',
+    aiSummary: '提出四季度产能向主力车型倾斜 8 个百分点，锁定 14 项关键物料保供清单，建立双源与安全库存。申请临时采购授权及物流加急预算 2200 万元。',
+    decisionPoints: ['排产优先级确认', '关键物料保供清单审批', '临时采购授权'],
+    presenter: '孙丽华', estimatedMins: 18,
+    materials: ['四季度排产计划.pdf', '关键物料缺口清单.xlsx'],
+    targetMeetings: ['经营调度会'],
+    topicKind: '经营管理会议题',
+  },
+  {
+    id: 'T012',
+    title: '新能源车型终端促销与库存去化方案',
+    submitter: '李建国', dept: '战略发展部', submittedAt: '2026-08-21',
+    status: '锁定中', priority: '中',
+    background: '新能源库存周转天数升至 52 天，部分车型终端价格倒挂，需在不冲击品牌的前提下加快去化。',
+    objective: '审议促销节奏、区域差异化政策及库存去化目标。',
+    aiSummary: '建议 9–11 月分两轮促销，聚焦库存 90 天以上车型；设定去化目标 1.2 万台，毛利影响控制在 1.8 亿元以内。需确认政策口径与区域授权边界。',
+    decisionPoints: ['促销政策口径确认', '去化目标与毛利底线', '区域授权范围'],
+    presenter: '李建国', estimatedMins: 15,
+    materials: ['库存结构分析.pdf', '促销政策建议.pptx'],
+    targetMeetings: ['经营调度会'],
+    topicKind: '经营管理会议题',
+  },
 ]
 
 const INIT_MEETINGS: Meeting[] = [
@@ -654,12 +698,17 @@ const INIT_MEETINGS: Meeting[] = [
     date: '2026-08-28', time: '09:30', endTime: '11:30',
     location: '总部大厦26层第二会议室',
     chair: '张副总（运营）',
-    attendees: ['张副总（运营）', '王总助', '李建国', '各业务板块负责人'],
+    attendees: ['张副总（运营）', '王总助', '李建国', '赵国栋', '孙丽华', '各业务板块负责人'],
     observers: ['变革与流程管理办公室 吴工'],
     disciplineStaff: ['纪委办公室 陈监察'],
     organizer: '王总助',
     organizeDept: '战略发展部',
-    meetingTopics: [{ topicId: 'T001', order: 1 }],
+    meetingTopics: [
+      { topicId: 'T001', order: 1 },
+      { topicId: 'T010', order: 2 },
+      { topicId: 'T011', order: 3 },
+      { topicId: 'T012', order: 4 },
+    ],
     status: '进行中',
     notes: '',
   },
@@ -4063,12 +4112,23 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
 
 // Historical decision data per topic
 const TOPIC_HISTORY: Record<string, { dp: string; quote: string; date: string; meeting: string; note: string }[]> = {
+  'T001': [
+    { dp: '三季度经营目标确认', quote: '三季度要把份额稳住，利润不能靠一次性因素。', date: '05-22', meeting: '5月经营调度会', note: '会上明确三季度营收同比不低于 10%、净利润保底 8 亿元，本次为收官复盘并部署四季度。' },
+    { dp: '华北区整合原则通过', quote: '整合可以做，但节奏要对经销商有交代。', date: '03-18', meeting: '一季度经营分析会', note: '原则同意华北区整合方向，要求形成可执行方案后再上会，本次进入预算与路径审批。' },
+  ],
   'T003': [
     { dp: '薪酬体系改革方案审批', quote: '薪酬要与贡献挂钩，让实干者有获得感。', date: '06-12', meeting: '人才发展专题会', note: '会上要求人力资源部结合市场薪酬调研，提出宽带薪酬改革方案，本次承接该方向。' },
     { dp: '绩效联动机制建立', quote: '绩效考核不能只是过场，要真正影响收入分配。', date: '04-08', meeting: '总经理办公会', note: '四月会议已就绩效与薪酬联动做原则性决策，本次进入落地方案审批阶段。' },
   ],
   'T004': [
     { dp: '投资规模上限审批', quote: '战略性投资不怕多，怕的是没有退出路径。', date: '05-20', meeting: '投资委员会专题', note: '本次议题在五月投资委会上已完成尽调汇报，本次为最终审批节点。' },
+  ],
+  'T010': [
+    { dp: '华北份额下滑专项督办', quote: '份额掉了要找到渠道结构问题，不能只压任务。', date: '06-26', meeting: '6月经营调度会', note: '要求大区拿出下沉方案与经销商考核修订稿，本次为方案审议节点。' },
+    { dp: '经销商分级试点授权', quote: '先试点、后铺开，服务权重必须加进去。', date: '04-16', meeting: '区域渠道专题会', note: '原则同意经销商分级管理，本次明确考核权重与 12 城试点名单。' },
+  ],
+  'T011': [
+    { dp: '关键物料双源策略', quote: '芯片和电驱件不能再单点依赖。', date: '07-10', meeting: '供应链专题会', note: '已要求采购管理部形成保供清单与替代路径，本次确认四季度排产优先级。' },
   ],
 }
 
@@ -4159,10 +4219,14 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd }: {
   }
 
   const history = TOPIC_HISTORY[current.id] ?? []
-  const materials = [
-    { name: `${current.title.slice(0, 10)}_报告.pdf`, size: '2.4MB', ext: 'PDF', color: '#1b365d', bg: '#eef2f6' },
-    { name: `${current.title.slice(0, 8)}_PPT.pptx`, size: '8.1MB', ext: 'PPT', color: '#8a5a2b', bg: '#f5f0ea' },
-  ]
+  const fileStyle = (name: string) => {
+    const ext = (name.split('.').pop() || 'FILE').toUpperCase()
+    if (ext.includes('PPT')) return { ext: 'PPT', color: '#8a5a2b', bg: '#f5f0ea', size: '8.1MB' }
+    if (ext.includes('XLS')) return { ext: 'XLS', color: '#2f5d4a', bg: '#eef4f1', size: '1.6MB' }
+    if (ext.includes('DOC')) return { ext: 'DOC', color: '#3d4a6b', bg: '#eef0f4', size: '1.2MB' }
+    return { ext: 'PDF', color: '#1b365d', bg: '#eef2f6', size: '2.4MB' }
+  }
+  const materials = (current.materials.length ? current.materials : [`${current.title.slice(0, 10)}_报告.pdf`]).map(name => ({ name, ...fileStyle(name) }))
 
   return (
     <div style={{ margin: '-28px -32px' }}>
