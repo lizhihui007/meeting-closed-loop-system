@@ -61,7 +61,7 @@ interface Topic {
   notes?: string
   outcomes?: TopicOutcome[]
   topicKind?: TopicKind
-  relatedTopicId?: string
+  relatedTopicIds?: string[]
 }
 
 interface TopicOutcome {
@@ -448,15 +448,14 @@ function titleSimilarity(a: string, b: string) {
   return (2 * inter) / (A.size + B.size)
 }
 
-function findSimilarTopics(title: string, topics: Topic[], excludeId?: string) {
+function findSimilarTopics(title: string, topics: Topic[], excludeId?: string, minScore = 0.85) {
   const q = title.trim()
   if (q.length < 4) return []
   return topics
     .filter(t => t.id !== excludeId)
     .map(t => ({ topic: t, score: titleSimilarity(q, t.title) }))
-    .filter(x => x.score >= 0.55)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 4)
+    .filter(x => x.score >= minScore)
+    .sort((a, b) => b.score - a.score || b.topic.submittedAt.localeCompare(a.topic.submittedAt))
 }
 
 const MEETING_ORG_DEPTS = ['集团办公室', '党委办公室', '董事会办公室', '战略发展部', '人力资源部', '综合室']
@@ -1375,7 +1374,7 @@ function TopicPickerModal({ topics, alreadyPicked, meetingTypeId, onClose, onAdd
   alreadyPicked: string[]
   meetingTypeId: string
   onClose: () => void
-  onAdd: (topicId: string) => void
+  onAdd: (topicIds: string[]) => void
 }) {
   const { meetingTypes } = useMeetingCatalog()
   const typeName = meetingTypeName(meetingTypeId, meetingTypes)
@@ -1384,33 +1383,83 @@ function TopicPickerModal({ topics, alreadyPicked, meetingTypeId, onClose, onAdd
     && !alreadyPicked.includes(t.id)
     && (t.targetMeetings ?? []).includes(typeName)
   )
+  const [picked, setPicked] = useState<string[]>([])
+
+  const toggle = (id: string) => {
+    setPicked(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const toggleAll = () => {
+    setPicked(prev => prev.length === available.length ? [] : available.map(t => t.id))
+  }
 
   return (
     <ModalShell
       title="添加议题"
-      kicker={`${typeName} · ${available.length} 项可安排`}
+      kicker={`${typeName} · 可安排 ${available.length} 项 · 已选 ${picked.length}`}
       width={620}
       onClose={onClose}
-      footer={<ModalFoot><Btn label="关闭" variant="ghost" onClick={onClose} /></ModalFoot>}
+      footer={
+        <ModalFoot>
+          <Btn label="取消" variant="ghost" onClick={onClose} />
+          <Btn
+            label={picked.length ? `确认加入（${picked.length}）` : '确认加入'}
+            variant="primary"
+            disabled={picked.length === 0}
+            onClick={() => { onAdd(picked); onClose() }}
+          />
+        </ModalFoot>
+      }
     >
       {available.length === 0 && (
         <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--muted-foreground)', fontSize: 13 }}>
           暂无申报「{typeName}」的待安排议题
         </div>
       )}
-      {available.map(t => (
-        <div key={t.id} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: 'var(--muted-foreground)' }}>{t.id}</span>
-              <Badge label={t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')} color={urgencyColor[t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')]} />
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{t.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{t.dept} · {t.presenter} · {t.estimatedMins} 分钟</div>
-          </div>
-          <Btn label="加入" variant="primary" small onClick={() => { onAdd(t.id); onClose() }} />
+      {available.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>可勾选多项后一次性加入议程</div>
+          <button
+            type="button"
+            onClick={toggleAll}
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+          >
+            {picked.length === available.length ? '取消全选' : '全选'}
+          </button>
         </div>
-      ))}
+      )}
+      {available.map(t => {
+        const on = picked.includes(t.id)
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => toggle(t.id)}
+            style={{
+              width: '100%', display: 'flex', gap: 14, padding: '12px 10px', borderBottom: '1px solid var(--border)',
+              alignItems: 'center', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+              border: 'none', borderRadius: 6, background: on ? 'var(--secondary)' : 'transparent', marginBottom: 2,
+            }}
+          >
+            <span style={{
+              width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+              border: on ? '1px solid var(--primary)' : '1px solid var(--border)',
+              background: on ? 'var(--primary)' : '#fff', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
+            }}>
+              {on ? '✓' : ''}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: 'var(--muted-foreground)' }}>{t.id}</span>
+                <Badge label={t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')} color={urgencyColor[t.urgency ?? (t.priority === '高' ? '紧急' : t.priority === '低' ? '一般' : '急')]} />
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3, color: on ? 'var(--primary)' : 'var(--foreground)' }}>{t.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{t.dept} · {t.presenter} · {t.estimatedMins} 分钟</div>
+            </div>
+          </button>
+        )
+      })}
     </ModalShell>
   )
 }
@@ -1566,6 +1615,8 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
   const [actionToast, setActionToast] = useState('')
   const [showNotifyModal, setShowNotifyModal] = useState(false)
   const [detailTopic, setDetailTopic] = useState<Topic | null>(null)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [overIdx, setOverIdx] = useState<number | null>(null)
   const meetingTopics = [...meeting.meetingTopics].sort((a, b) => a.order - b.order)
   const canEditAgenda = meeting.status !== '已结束'
 
@@ -1620,6 +1671,14 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
     onUpdate({ ...meeting, meetingTopics: arr.map((x, i) => ({ ...x, order: i + 1 })) })
   }
 
+  const reorderAgenda = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= meetingTopics.length || to >= meetingTopics.length) return
+    const arr = [...meetingTopics]
+    const [item] = arr.splice(from, 1)
+    arr.splice(to, 0, item)
+    onUpdate({ ...meeting, meetingTopics: arr.map((x, i) => ({ ...x, order: i + 1 })) })
+  }
+
   const updateMins = (topicId: string, mins: number) => {
     onUpdate({
       ...meeting,
@@ -1629,12 +1688,20 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
     })
   }
 
-  const addTopic = (topicId: string) => {
+  const addTopics = (topicIds: string[]) => {
+    if (topicIds.length === 0) return
+    const existing = new Set(meeting.meetingTopics.map(mt => mt.topicId))
+    const toAdd = topicIds.filter(id => !existing.has(id))
+    if (toAdd.length === 0) return
+    let order = meeting.meetingTopics.length
     onUpdate({
       ...meeting,
-      meetingTopics: [...meeting.meetingTopics, { topicId, order: meeting.meetingTopics.length + 1 }],
+      meetingTopics: [
+        ...meeting.meetingTopics,
+        ...toAdd.map(topicId => ({ topicId, order: ++order })),
+      ],
     })
-    setTopics(prev => prev.map(t => t.id === topicId && t.status === '待安排' ? { ...t, status: '已安排' } : t))
+    setTopics(prev => prev.map(t => toAdd.includes(t.id) && t.status === '待安排' ? { ...t, status: '已安排' } : t))
   }
 
   const startMeeting = () => {
@@ -1674,7 +1741,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
           alreadyPicked={pickedIds}
           meetingTypeId={meeting.typeId}
           onClose={() => setShowPicker(false)}
-          onAdd={addTopic}
+          onAdd={addTopics}
         />
       )}
 
@@ -1739,7 +1806,10 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 20px', background: 'var(--secondary)', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                 <span style={{ fontSize: 14, fontWeight: 600 }}>议题安排</span>
-                <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>共 {meetingTopics.length} 项 · 合计 {totalMins} 分钟</span>
+                <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+                  共 {meetingTopics.length} 项 · 合计 {totalMins} 分钟
+                  {canEditAgenda && meetingTopics.length > 1 ? ' · 可拖拽调整顺序' : ''}
+                </span>
               </div>
               {canEditAgenda && (
                 <Btn label="+ 添加议题" variant="primary" onClick={() => setShowPicker(true)} />
@@ -1758,9 +1828,53 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
                 const mins = mt.customMins ?? t.estimatedMins
                 const topicStart = elapsed
                 elapsed += mins
+                const dragging = dragIdx === idx
+                const dragOver = overIdx === idx && dragIdx !== null && dragIdx !== idx
                 return (
-                  <div key={mt.topicId} style={{ borderBottom: idx < meetingTopics.length - 1 ? '1px solid var(--border)' : 'none', padding: '16px 20px', cursor: 'pointer' }} onClick={() => setDetailTopic(t)}>
+                  <div
+                    key={mt.topicId}
+                    draggable={canEditAgenda}
+                    onDragStart={e => {
+                      if (!canEditAgenda) return
+                      setDragIdx(idx)
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/plain', String(idx))
+                    }}
+                    onDragOver={e => {
+                      if (!canEditAgenda || dragIdx === null) return
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                      if (overIdx !== idx) setOverIdx(idx)
+                    }}
+                    onDrop={e => {
+                      e.preventDefault()
+                      const from = dragIdx ?? Number(e.dataTransfer.getData('text/plain'))
+                      reorderAgenda(from, idx)
+                      setDragIdx(null)
+                      setOverIdx(null)
+                    }}
+                    onDragEnd={() => { setDragIdx(null); setOverIdx(null) }}
+                    style={{
+                      borderBottom: idx < meetingTopics.length - 1 ? '1px solid var(--border)' : 'none',
+                      padding: '16px 20px',
+                      cursor: canEditAgenda ? 'grab' : 'pointer',
+                      opacity: dragging ? 0.55 : 1,
+                      background: dragOver ? 'var(--secondary)' : 'transparent',
+                      boxShadow: dragOver ? 'inset 0 2px 0 var(--primary)' : 'none',
+                      transition: 'background 0.12s, opacity 0.12s',
+                    }}
+                    onClick={() => setDetailTopic(t)}
+                  >
                     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                      {canEditAgenda && (
+                        <div
+                          title="拖拽调整顺序"
+                          onClick={e => e.stopPropagation()}
+                          style={{ width: 18, marginTop: 6, color: 'var(--muted-foreground)', cursor: 'grab', flexShrink: 0, letterSpacing: -1, userSelect: 'none', fontSize: 14, lineHeight: 1 }}
+                        >
+                          ⋮⋮
+                        </div>
+                      )}
                       {/* Order badge */}
                       <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
                         {idx + 1}
@@ -3220,8 +3334,9 @@ function MeetingTypesView() {
 
 // ─── Topic Form Modal ─────────────────────────────────────────────────────────
 
-function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, onDelete }: {
+function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSave, onLock, onDelete }: {
   topic: Topic | null
+  seed?: Topic | null
   existingTopics?: Topic[]
   onClose: () => void
   onSave: (t: Topic) => void
@@ -3232,6 +3347,8 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
   const { role, roles, userName } = usePermission()
   const isManager = roleIsManager(role, roles)
   const isCreate = topic === null
+  const isCopy = isCreate && !!seed
+  const source = topic ?? seed
   // 待安排、已安排可改；锁定中 / 已上会（含材料）只读
   const isEditable = isCreate || topic.status === '待安排' || topic.status === '已安排'
   const readOnlyHint = !isCreate && !isEditable
@@ -3241,37 +3358,39 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
     p === '高' ? '紧急' : p === '低' ? '一般' : '急'
 
   const presetMins = [3, 5, 8]
-  const initialMins = topic?.estimatedMins ?? 5
+  const initialMins = source?.estimatedMins ?? 5
   const initialOther = !presetMins.includes(initialMins)
 
   const [form, setForm] = useState({
-    topicKind: (topic?.topicKind ?? '总经办议题') as TopicKind,
-    title: topic?.title ?? '',
-    isTradeSecret: topic?.isTradeSecret ?? false,
-    isMajorDecision: topic?.isMajorDecision ?? false,
-    urgency: (topic?.urgency ?? urgencyFromPriority(topic?.priority)) as '紧急' | '急' | '一般',
-    targetMeetings: topic?.targetMeetings ?? [],
-    preLeader: topic?.preBrief?.leader ?? false,
-    preGm: topic?.preBrief?.gm ?? false,
-    preChairman: topic?.preBrief?.chairman ?? false,
-    dept: topic?.dept ?? '',
-    submitter: topic?.submitter ?? (isManager ? '' : userName),
-    presenter: topic?.presenter ?? '',
-    attendDepts: topic?.attendDepts ?? '',
-    attendEnterprises: topic?.attendEnterprises ?? '',
+    topicKind: (source?.topicKind ?? '总经办议题') as TopicKind,
+    title: source?.title ?? '',
+    isTradeSecret: source?.isTradeSecret ?? false,
+    isMajorDecision: source?.isMajorDecision ?? false,
+    urgency: (source?.urgency ?? urgencyFromPriority(source?.priority)) as '紧急' | '急' | '一般',
+    targetMeetings: source?.targetMeetings ?? [],
+    preLeader: source?.preBrief?.leader ?? false,
+    preGm: source?.preBrief?.gm ?? false,
+    preChairman: source?.preBrief?.chairman ?? false,
+    dept: source?.dept ?? '',
+    submitter: source?.submitter ?? (isManager ? '' : userName),
+    presenter: source?.presenter ?? '',
+    attendDepts: source?.attendDepts ?? '',
+    attendEnterprises: source?.attendEnterprises ?? '',
     estimatedMins: initialOther ? 5 : initialMins,
     minsOther: initialOther,
     customMins: initialOther ? String(initialMins) : '',
-    notes: topic?.notes ?? '',
-    relatedTopicId: topic?.relatedTopicId ?? '',
+    notes: source?.notes ?? '',
+    relatedTopicIds: source?.relatedTopicIds ?? [],
   })
   const [files, setFiles] = useState<{ id: number; name: string; size: string }[]>(
-    topic?.materials.map((m, i) => ({ id: i, name: m, size: '—' })) ?? []
+    source?.materials.map((m, i) => ({ id: i, name: m, size: '—' })) ?? []
   )
   const fileRef = useRef<HTMLInputElement>(null)
-  const nextId = useRef(topic?.materials.length ?? 0)
+  const nextId = useRef(source?.materials.length ?? 0)
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'processing'>('idle')
   const voiceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [titleChecked, setTitleChecked] = useState(() => !!(source?.title?.trim()))
+  const noneRelated = form.relatedTopicIds.length === 0
 
   const set = (k: string, v: string | number | boolean | string[]) => setForm(f => ({ ...f, [k]: v }))
   const toggleMeeting = (name: string) => {
@@ -3284,10 +3403,21 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
     }))
   }
 
+  const selectNoneRelated = () => set('relatedTopicIds', [])
+
+  const toggleRelatedTopic = (id: string) => {
+    setForm(f => {
+      const has = f.relatedTopicIds.includes(id)
+      const next = has ? f.relatedTopicIds.filter(x => x !== id) : [...f.relatedTopicIds, id]
+      return { ...f, relatedTopicIds: next }
+    })
+  }
+
   const fillFromVoice = () => {
     setForm(f => ({
       ...f,
       title: '集团ERP系统升级改造项目立项申请',
+      relatedTopicIds: [],
       dept: '信息技术部',
       submitter: '张慧敏',
       presenter: '张慧敏',
@@ -3299,6 +3429,7 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
       estimatedMins: 5,
       notes: '信息技术部张慧敏提报，对集团现有ERP系统进行全面升级，预计投入2000万元，建设周期12个月。目标是提升业务处理效率30%以上。',
     }))
+    setTitleChecked(true)
     setVoiceState('idle')
   }
 
@@ -3332,18 +3463,26 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
     const mins = form.topicKind === '经营管理会议题' && form.minsOther
       ? Math.max(1, Number(form.customMins) || 0)
       : form.estimatedMins
+    const newId = (() => {
+      if (topic?.id) return topic.id
+      const used = new Set(existingTopics.map(t => t.id))
+      let n = existingTopics.length + 100
+      let id = `T${String(n).padStart(3, '0')}`
+      while (used.has(id)) { n += 1; id = `T${String(n).padStart(3, '0')}` }
+      return id
+    })()
     const saved: Topic = {
-      id: topic?.id ?? `T${String(Math.floor(Math.random() * 900) + 100)}`,
+      id: newId,
       title: form.title,
       submitter: form.submitter,
       dept: form.dept,
       submittedAt: topic?.submittedAt ?? new Date().toISOString().slice(0, 10),
       status: topic?.status ?? '待安排',
       priority: form.topicKind === '经营管理会议题' ? '中' : (urgency === '紧急' ? '高' : urgency === '一般' ? '低' : '中'),
-      background: topic?.background ?? form.notes,
-      objective: topic?.objective ?? '',
+      background: isCreate ? (source?.background || form.notes) : (topic?.background ?? form.notes),
+      objective: isCreate ? (source?.objective ?? '') : (topic?.objective ?? ''),
       aiSummary: isCreate ? '' : (topic?.aiSummary ?? ''),
-      decisionPoints: topic?.decisionPoints ?? [],
+      decisionPoints: isCreate ? (source?.decisionPoints ?? []) : (topic?.decisionPoints ?? []),
       presenter: form.presenter,
       estimatedMins: mins,
       materials: files.map(f => f.name),
@@ -3355,9 +3494,9 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
       attendDepts: form.attendDepts,
       attendEnterprises: form.attendEnterprises,
       notes: form.notes,
-      outcomes: topic?.outcomes,
+      outcomes: isCreate ? undefined : topic?.outcomes,
       topicKind: form.topicKind,
-      relatedTopicId: form.relatedTopicId || undefined,
+      relatedTopicIds: form.relatedTopicIds.length ? form.relatedTopicIds : undefined,
     }
     onSave(saved)
     onClose()
@@ -3368,14 +3507,16 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
   const inputCls = `field-input${!isEditable ? ' is-ro' : ''}`
   const isOffice = form.topicKind === '总经办议题'
   const typeNames = typeNamesForKind(meetingTypes, form.topicKind)
-  const similar = isCreate && isEditable ? findSimilarTopics(form.title, existingTopics) : []
-  const related = existingTopics.find(t => t.id === form.relatedTopicId)
+  const similar = (isCreate || isEditable) && titleChecked
+    ? findSimilarTopics(form.title, existingTopics, topic?.id)
+    : []
+  const relatedList = existingTopics.filter(t => form.relatedTopicIds.includes(t.id))
 
   return (
     <ModalShell
-      title={isCreate ? '议题申报' : (form.title || '议题详情')}
-      kicker={isCreate ? undefined : `议题详情 · ${topic.id}`}
-      extra={!isCreate ? <Badge label={topic.status} color={topicStatusColor[topic.status]} /> : undefined}
+      title={isCopy ? '复制议题申报' : isCreate ? '议题申报' : (form.title || '议题详情')}
+      kicker={isCopy ? `基于 ${(seed?.relatedTopicIds?.[0] || seed?.id) ?? '原议题'} 复制` : isCreate ? undefined : `议题详情 · ${topic.id}`}
+      extra={!isCreate ? <Badge label={topic.status} color={topicStatusColor[topic.status]} /> : isCopy ? <Badge label="待安排" color={topicStatusColor['待安排']} /> : undefined}
       width={920}
       expand
       onClose={onClose}
@@ -3402,7 +3543,7 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
             <Btn label="锁定议题" variant="danger" onClick={() => { onLock(topic.id); onClose() }} />
           )}
           {isEditable && (
-            <Btn label={isCreate ? '提交申报' : '保存修改'} variant="primary" disabled={!canSave} onClick={handleSave} />
+            <Btn label={isCopy ? '提交复制申报' : isCreate ? '提交申报' : '保存修改'} variant="primary" disabled={!canSave} onClick={handleSave} />
           )}
         </ModalFoot>
       }
@@ -3453,35 +3594,95 @@ function TopicFormModal({ topic, existingTopics = [], onClose, onSave, onLock, o
       </Field>
 
       <Field label="议题名称" required={isEditable}>
-        <input className={inputCls} readOnly={!isEditable} value={form.title} onChange={e => set('title', e.target.value)} placeholder="一句话概括议题名称" />
+        <input
+          className={inputCls}
+          readOnly={!isEditable}
+          value={form.title}
+          onChange={e => {
+            const v = e.target.value
+            setForm(f => ({ ...f, title: v, relatedTopicIds: [] }))
+            setTitleChecked(false)
+          }}
+          onBlur={e => {
+            if (e.target.value.trim().length >= 4) setTitleChecked(true)
+          }}
+          placeholder="一句话概括议题名称"
+        />
+        {isEditable && (
+          <div className="field-note">输入完成后失焦，系统将检索相似度 ≥ 85% 的历史议题供关联（可多选）</div>
+        )}
       </Field>
 
-      {isCreate && similar.length > 0 && (
+      {isEditable && titleChecked && form.title.trim().length >= 4 && (
         <div style={{ marginBottom: 14, padding: '12px 14px', background: '#faf6ec', border: '1px solid #f4ecd8', borderRadius: 7 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#9a7b3a', marginBottom: 8 }}>发现高度相似的历史议题，请确认是否重复申报</div>
-          {similar.map(s => (
-            <div key={s.topic.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid #f4ecd8' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{s.topic.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2 }}>
-                  {s.topic.id} · {s.topic.dept} · {s.topic.submittedAt} · 相似度 {Math.round(s.score * 100)}%
-                </div>
-              </div>
-              <Btn
-                label={form.relatedTopicId === s.topic.id ? '已关联' : '关联'}
-                variant={form.relatedTopicId === s.topic.id ? 'primary' : 'secondary'}
-                small
-                onClick={() => set('relatedTopicId', form.relatedTopicId === s.topic.id ? '' : s.topic.id)}
-              />
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#9a7b3a', marginBottom: 4 }}>关联历史议题</div>
+          <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 10 }}>
+            {similar.length > 0
+              ? `检索到 ${similar.length} 条相似度 ≥ 85% 的历史议题，请选择关联项（可多选）；默认「无关联议题」。`
+              : '未发现相似度 ≥ 85% 的历史议题，可保持「无关联议题」。'}
+          </div>
+
+          <button
+            type="button"
+            onClick={selectNoneRelated}
+            style={{
+              width: '100%', display: 'flex', gap: 10, alignItems: 'center', textAlign: 'left',
+              padding: '10px 8px', border: 'none', borderBottom: '1px solid #f4ecd8',
+              background: noneRelated ? 'rgba(255,255,255,0.7)' : 'transparent',
+              cursor: 'pointer', fontFamily: 'inherit', borderRadius: 4,
+            }}
+          >
+            <span style={{
+              width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+              border: noneRelated ? '1px solid var(--primary)' : '1px solid var(--border)',
+              background: noneRelated ? 'var(--primary)' : '#fff', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
+            }}>{noneRelated ? '✓' : ''}</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: noneRelated ? 'var(--primary)' : 'var(--foreground)' }}>无关联议题</div>
+              <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2 }}>本次申报不关联任何历史议题</div>
             </div>
-          ))}
+          </button>
+
+          {similar.map(s => {
+            const on = form.relatedTopicIds.includes(s.topic.id)
+            return (
+              <button
+                key={s.topic.id}
+                type="button"
+                onClick={() => toggleRelatedTopic(s.topic.id)}
+                style={{
+                  width: '100%', display: 'flex', gap: 10, alignItems: 'center', textAlign: 'left',
+                  padding: '10px 8px', border: 'none', borderBottom: '1px solid #f4ecd8',
+                  background: on ? 'rgba(255,255,255,0.7)' : 'transparent',
+                  cursor: 'pointer', fontFamily: 'inherit', borderRadius: 4,
+                }}
+              >
+                <span style={{
+                  width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                  border: on ? '1px solid var(--primary)' : '1px solid var(--border)',
+                  background: on ? 'var(--primary)' : '#fff', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
+                }}>{on ? '✓' : ''}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: on ? 'var(--primary)' : 'var(--foreground)' }}>{s.topic.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2 }}>
+                    {s.topic.id} · {s.topic.dept} · {s.topic.submittedAt} · {s.topic.status} · 相似度 {Math.round(s.score * 100)}%
+                  </div>
+                </div>
+              </button>
+            )
+          })}
         </div>
       )}
 
-      {related && (
+      {!isEditable && relatedList.length > 0 && (
         <div className="field-note" style={{ marginBottom: 12 }}>
-          已关联历史议题：{related.id} {related.title}
+          已关联历史议题：{relatedList.map(t => `${t.id} ${t.title}`).join('；')}
         </div>
+      )}
+      {!isEditable && relatedList.length === 0 && topic?.relatedTopicIds !== undefined && (
+        <div className="field-note" style={{ marginBottom: 12 }}>无关联议题</div>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: isOffice ? '1fr 1fr 1fr' : '1fr', gap: 12, marginBottom: isOffice ? 0 : 14 }}>
@@ -3949,7 +4150,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
   const scope = roleScopeCategory(role, roles)
   const scopedTopics = topics.filter(t => topicInRoleScope(t, role, roles, userName))
   const [filter, setFilter] = useState<TopicStatus | '全部'>('全部')
-  const [modal, setModal] = useState<{ topic: Topic | null } | null>(null)
+  const [modal, setModal] = useState<{ topic: Topic | null; seed?: Topic | null } | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [toast, setToast] = useState('')
 
@@ -3961,6 +4162,23 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
     if (t.status !== '待安排') return false
     if (isManager) return true
     return t.submitter === userName || t.presenter === userName
+  }
+
+  const handleCopy = (source: Topic) => {
+    const title = /（副本）$/.test(source.title) ? source.title : `${source.title}（副本）`
+    setModal({
+      topic: null,
+      seed: {
+        ...source,
+        title,
+        status: '待安排',
+        submittedAt: new Date().toISOString().slice(0, 10),
+        submitter: isManager ? source.submitter : userName,
+        outcomes: undefined,
+        aiSummary: '',
+        relatedTopicIds: [source.id],
+      },
+    })
   }
 
   const handleDelete = (t: Topic) => {
@@ -3979,7 +4197,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
     const isNew = saved.id.startsWith('T') && !INIT_TOPICS.some(t => t.id === saved.id) && !topics.some(t => t.id === saved.id)
     setTopics(prev => prev.some(t => t.id === saved.id) ? prev.map(t => t.id === saved.id ? saved : t) : [saved, ...prev])
     if (isNew) {
-      showToast('议题申报成功。')
+      showToast(saved.relatedTopicIds?.length ? '议题已复制申报。' : '议题申报成功。')
       setTimeout(() => {
         const summary = `【系统生成】${saved.title}。经办部门${saved.dept}，经办人${saved.submitter}，汇报人${saved.presenter}。拟上${saved.targetMeetings?.join('、') || '待定'}，时长${saved.estimatedMins}分钟。${saved.isMajorDecision ? '属三重一大。' : ''}${saved.isTradeSecret ? '涉及商密。' : ''}`
         setTopics(prev => prev.map(t => t.id === saved.id ? { ...t, aiSummary: summary } : t))
@@ -4013,6 +4231,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
       {modal !== undefined && modal !== null && (
         <TopicFormModal
           topic={modal.topic}
+          seed={modal.seed}
           existingTopics={topics}
           onClose={() => setModal(null)}
           onSave={handleSave}
@@ -4090,6 +4309,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <Btn label={canEdit ? '编辑' : '查看'} variant="ghost" small onClick={() => setModal({ topic: t })} />
+                      <Btn label="复制" variant="ghost" small onClick={() => handleCopy(t)} />
                       {isManager && t.status === '已安排' && (
                         <Btn label="锁定" variant="danger" small onClick={() => { handleLock(t.id) }} />
                       )}
