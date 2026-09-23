@@ -325,6 +325,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 7px;
   padding: 10px 12px;
+  margin-top: 8px;
   margin-bottom: 8px;
 }
 .field-label {

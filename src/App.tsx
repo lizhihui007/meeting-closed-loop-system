@@ -102,6 +102,22 @@ interface Meeting {
   meetingTopics: MeetingTopic[]
   status: MeetingStatus
   notes: string
+  /** 所属组合会期；单场会议为空 */
+  sessionId?: string
+}
+
+/** 组合会期：同一次连开的多场 Meeting 容器（非会议类型） */
+interface MeetingSession {
+  id: string
+  name: string
+  date: string
+  time: string
+  endTime: string
+  location: string
+  organizer: string
+  organizeDept: string
+  meetingIds: string[]
+  notes?: string
 }
 
 interface ActionItem {
@@ -129,7 +145,10 @@ interface MeetingTypeDef {
   color: string
   bg: string
   enabled: boolean
+  usualLocation: string
   usualChair: string
+  usualOrganizer: string
+  usualOrganizeDept: string
   usualAttendees: string[]
   usualObservers: string[]
   usualDiscipline: string[]
@@ -148,7 +167,9 @@ const INIT_MEETING_TYPES: MeetingTypeDef[] = [
   {
     id: 'gac-gm-office', name: '广汽集团总经理办公会', desc: '广汽集团总经理主持的综合性决策会议',
     category: '总经办', color: '#1b365d', bg: '#eef2f6', enabled: true,
+    usualLocation: '总部大厦28层第一会议室',
     usualChair: '马总（集团总经理）',
+    usualOrganizer: '王总助', usualOrganizeDept: '集团办公室',
     usualAttendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '王总助', '各部门主要负责人'],
     usualObservers: ['财务本部 刘会计', '品牌公关部 周薇'],
     usualDiscipline: ['纪委办公室 陈监察'],
@@ -156,7 +177,9 @@ const INIT_MEETING_TYPES: MeetingTypeDef[] = [
   {
     id: 'gac-party', name: '广汽集团党委会', desc: '广汽集团党委决策会议',
     category: '总经办', color: '#6b2e2e', bg: '#f8eeee', enabled: true,
+    usualLocation: '总部大厦16层党建活动室',
     usualChair: '马总（党委书记）',
+    usualOrganizer: '王总助', usualOrganizeDept: '党委办公室',
     usualAttendees: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长'],
     usualObservers: ['党委工作部 组织处列席'],
     usualDiscipline: ['纪委办公室 陈监察'],
@@ -164,7 +187,9 @@ const INIT_MEETING_TYPES: MeetingTypeDef[] = [
   {
     id: 'gac-board', name: '广汽集团董事会', desc: '广汽集团董事会会议',
     category: '总经办', color: '#2a3558', bg: '#eef0f4', enabled: true,
+    usualLocation: '总部大厦30层董事会议室',
     usualChair: '马总（董事长）',
+    usualOrganizer: '董事会秘书', usualOrganizeDept: '董事会办公室',
     usualAttendees: ['马总（董事长）', '李总（执行董事）', '张董事', '王独立董事', '陈独立董事', '董事会秘书'],
     usualObservers: ['董办 林秘'],
     usualDiscipline: ['纪委办公室 陈监察'],
@@ -172,7 +197,9 @@ const INIT_MEETING_TYPES: MeetingTypeDef[] = [
   {
     id: 'gac-industry-party', name: '广汽工业集团党委会', desc: '广汽工业集团党委决策会议',
     category: '总经办', color: '#8b3a3a', bg: '#f6eeee', enabled: true,
+    usualLocation: '工业集团党建会议室',
     usualChair: '马总（党委书记）',
+    usualOrganizer: '王总助', usualOrganizeDept: '党委办公室',
     usualAttendees: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长'],
     usualObservers: ['党委工作部 组织处列席'],
     usualDiscipline: ['纪委办公室 陈监察'],
@@ -180,7 +207,9 @@ const INIT_MEETING_TYPES: MeetingTypeDef[] = [
   {
     id: 'gac-industry-board', name: '广汽集团工业集团董事会', desc: '广汽工业集团董事会会议',
     category: '总经办', color: '#3d4a6b', bg: '#eef0f4', enabled: true,
+    usualLocation: '工业集团董事会议室',
     usualChair: '马总（董事长）',
+    usualOrganizer: '董事会秘书', usualOrganizeDept: '董事会办公室',
     usualAttendees: ['马总（董事长）', '李总（执行董事）', '张董事', '王独立董事', '陈独立董事', '董事会秘书'],
     usualObservers: ['董办 林秘'],
     usualDiscipline: ['纪委办公室 陈监察'],
@@ -188,7 +217,9 @@ const INIT_MEETING_TYPES: MeetingTypeDef[] = [
   {
     id: 'gz-industry-special', name: '广州工业集团专题会', desc: '广州工业集团专项研究会议',
     category: '总经办', color: '#2c5f6e', bg: '#eef4f5', enabled: true,
+    usualLocation: '工业集团专题会议室',
     usualChair: '分管副总',
+    usualOrganizer: '办公室主任', usualOrganizeDept: '集团办公室',
     usualAttendees: ['分管副总', '项目负责人', '相关部门负责人', '办公室主任'],
     usualObservers: [],
     usualDiscipline: ['纪委办公室 陈监察'],
@@ -196,7 +227,9 @@ const INIT_MEETING_TYPES: MeetingTypeDef[] = [
   {
     id: 'ops-monthly', name: '月度经营分析会', desc: '月度经营数据复盘与策略研判',
     category: '经营管理会', color: '#2f5d4a', bg: '#eef4f1', enabled: true,
+    usualLocation: '总部大厦28层第一会议室',
     usualChair: '马总（集团总经理）',
+    usualOrganizer: '王总助', usualOrganizeDept: '集团办公室',
     usualAttendees: ['马总（集团总经理）', '李副总（常务）', '财务部长', '战略部长', '各业务板块负责人'],
     usualObservers: ['财务本部 刘会计'],
     usualDiscipline: ['纪委办公室 陈监察'],
@@ -204,7 +237,9 @@ const INIT_MEETING_TYPES: MeetingTypeDef[] = [
   {
     id: 'ops-dispatch', name: '经营调度会', desc: '跨板块经营调度与协同推进',
     category: '经营管理会', color: '#8a5a2b', bg: '#f5f0ea', enabled: true,
+    usualLocation: '总部大厦28层第一会议室',
     usualChair: '张副总（运营）',
+    usualOrganizer: '王总助', usualOrganizeDept: '集团办公室',
     usualAttendees: ['张副总（运营）', '王总助', '各业务板块负责人', '办公室主任'],
     usualObservers: ['变革与流程管理办公室 吴工'],
     usualDiscipline: ['纪委办公室 陈监察'],
@@ -668,9 +703,428 @@ const INIT_TOPICS: Topic[] = [
     targetMeetings: ['经营调度会'],
     topicKind: '经营管理会议题',
   },
+  // ── 总办会 / 党委会可编排议题（供组合会模拟）──
+  {
+    id: 'T013',
+    title: '2026年固定资产投资计划中期调整',
+    submitter: '陈志远', dept: '投资发展部', submittedAt: '2026-09-01',
+    status: '锁定中', priority: '高',
+    background: '上半年固投进度偏慢，新能源与智能制造项目需追加，传统产能改造需调减。',
+    objective: '审议固投中期调整清单及资金平衡方案。',
+    aiSummary: '拟调增新能源产能与智能工厂项目 8.6 亿元，调减传统产线改造 3.2 亿元，总盘子基本持平。',
+    decisionPoints: ['调增项目清单审批', '资金平衡方案确认'],
+    presenter: '陈志远', estimatedMins: 20,
+    materials: ['固投中期调整表.xlsx', '项目可研摘要.pdf'],
+    targetMeetings: ['广汽集团总经理办公会'],
+  },
+  {
+    id: 'T014',
+    title: '海外市场巴西工厂二期扩建方案',
+    submitter: '李建国', dept: '战略发展部', submittedAt: '2026-09-01',
+    status: '锁定中', priority: '高',
+    background: '巴西一期产能利用率已超 95%，南美订单积压，需启动二期扩建论证。',
+    objective: '原则同意二期扩建方向，授权开展详细可研与融资方案。',
+    aiSummary: '二期拟新增年产能 8 万台，总投资约 12 亿元人民币等值，建设周期 24 个月。',
+    decisionPoints: ['二期方向原则同意', '可研与融资授权'],
+    presenter: '李建国', estimatedMins: 25,
+    materials: ['巴西二期概念方案.pdf', '南美市场预测.pptx'],
+    targetMeetings: ['广汽集团总经理办公会', '广汽集团董事会'],
+  },
+  {
+    id: 'T015',
+    title: '集团现金流压力测试与融资窗口安排',
+    submitter: '刘会计', dept: '财务本部', submittedAt: '2026-09-02',
+    status: '锁定中', priority: '高',
+    background: '四季度兑付高峰叠加固投付款，需评估流动性压力并预留融资窗口。',
+    objective: '确认压力情景假设、应急融资额度及窗口期。',
+    aiSummary: '基准情景流动性充足；压力情景下 11 月缺口约 15 亿元，建议预留银团与短融窗口。',
+    decisionPoints: ['压力情景确认', '融资窗口与额度审批'],
+    presenter: '刘会计', estimatedMins: 18,
+    materials: ['现金流压力测试.pdf', '融资窗口计划.xlsx'],
+    targetMeetings: ['广汽集团总经理办公会'],
+  },
+  {
+    id: 'T016',
+    title: '智能网联软件订阅商业化路径',
+    submitter: '张慧敏', dept: '信息技术部', submittedAt: '2026-09-02',
+    status: '锁定中', priority: '中',
+    background: '车载软件包已具备订阅条件，需明确定价、分成与售后服务责任。',
+    objective: '审议订阅产品矩阵、定价策略及与经销商分成机制。',
+    aiSummary: '建议推出基础/进阶/旗舰三档订阅，首年目标渗透率 18%，预计增量收入 2.4 亿元。',
+    decisionPoints: ['产品档位与定价', '分成机制与试点区域'],
+    presenter: '张慧敏', estimatedMins: 15,
+    materials: ['订阅商业模式.pptx', '竞品对标.pdf'],
+    targetMeetings: ['广汽集团总经理办公会'],
+  },
+  {
+    id: 'T017',
+    title: '质量问题召回与客户关怀专项预算',
+    submitter: '孙丽华', dept: '采购管理部', submittedAt: '2026-09-03',
+    status: '已安排', priority: '高',
+    background: '某批次零部件存在潜在质量风险，需评估主动召回范围与客户关怀标准。',
+    objective: '确认召回范围、费用测算及客户关怀专项预算。',
+    aiSummary: '建议覆盖约 2.1 万台，专项预算 1.8 亿元（含配件、工时与关怀礼包）。',
+    decisionPoints: ['召回范围确认', '专项预算审批'],
+    presenter: '孙丽华', estimatedMins: 20,
+    materials: ['质量风险评估.pdf', '召回费用测算.xlsx'],
+    targetMeetings: ['广汽集团总经理办公会'],
+    urgency: '急',
+  },
+  {
+    id: 'T018',
+    title: '总部大楼节能改造与碳中和试点',
+    submitter: '周建平', dept: '安全环保部', submittedAt: '2026-09-03',
+    status: '已安排', priority: '中',
+    background: '集团碳中和路线图要求总部率先示范，大楼能耗偏高需改造。',
+    objective: '审议节能改造方案与试点投资。',
+    aiSummary: '拟投资 4200 万元实施暖通与光伏改造，预计年减排 2800 吨二氧化碳当量。',
+    decisionPoints: ['改造方案审批', '试点投资授权'],
+    presenter: '周建平', estimatedMins: 12,
+    materials: ['节能改造方案.pdf'],
+    targetMeetings: ['广汽集团总经理办公会'],
+  },
+  {
+    id: 'T019',
+    title: '经销商融资担保额度上调申请',
+    submitter: '赵国栋', dept: '华东大区', submittedAt: '2026-09-04',
+    status: '已安排', priority: '中',
+    background: '旺季备货融资需求上升，现有担保额度已接近上限。',
+    objective: '审批集团对重点经销商担保额度上调方案。',
+    aiSummary: '申请将重点经销商担保总额由 30 亿上调至 38 亿，同步收紧风险预警阈值。',
+    decisionPoints: ['额度上调审批', '风险阈值调整'],
+    presenter: '赵国栋', estimatedMins: 15,
+    materials: ['担保额度分析.xlsx', '风险管控措施.pdf'],
+    targetMeetings: ['广汽集团总经理办公会'],
+  },
+  {
+    id: 'T020',
+    title: '研发体系组织架构优化与实验室共建',
+    submitter: '张慧敏', dept: '信息技术部', submittedAt: '2026-09-04',
+    status: '待安排', priority: '中',
+    background: '软硬件研发协同不畅，拟优化架构并与高校共建联合实验室。',
+    objective: '原则同意架构优化方向及共建实验室立项。',
+    aiSummary: '建议成立软件中台与硬件平台双轨组织，联合实验室首期投入 6000 万元。',
+    decisionPoints: ['架构优化原则同意', '联合实验室立项'],
+    presenter: '张慧敏', estimatedMins: 18,
+    materials: ['研发组织优化方案.pdf'],
+    targetMeetings: ['广汽集团总经理办公会', '广汽集团党委会'],
+  },
+  {
+    id: 'T021',
+    title: '党委理论学习中心组第四季度安排',
+    submitter: '组织部长', dept: '党委工作部', submittedAt: '2026-09-01',
+    status: '锁定中', priority: '中',
+    background: '需明确四季度中心组学习主题、主讲安排与研讨形式。',
+    objective: '审议并通过四季度中心组学习计划。',
+    aiSummary: '拟安排 4 次集中学习，主题覆盖高质量发展、党风廉政与科技创新。',
+    decisionPoints: ['学习主题确认', '主讲与时间安排'],
+    presenter: '组织部长', estimatedMins: 12,
+    materials: ['四季度学习计划.docx'],
+    targetMeetings: ['广汽集团党委会'],
+  },
+  {
+    id: 'T022',
+    title: '基层党组织换届选举工作方案',
+    submitter: '组织部长', dept: '党委工作部', submittedAt: '2026-09-01',
+    status: '锁定中', priority: '高',
+    background: '部分基层党组织任期将届满，需统一部署换届选举。',
+    objective: '审批换届工作方案、时间表与纪律要求。',
+    aiSummary: '覆盖 26 个基层党组织，拟于 10–11 月完成换届，强调人选把关与程序规范。',
+    decisionPoints: ['换届方案审批', '时间节点确认'],
+    presenter: '组织部长', estimatedMins: 15,
+    materials: ['换届选举工作方案.pdf'],
+    targetMeetings: ['广汽集团党委会'],
+  },
+  {
+    id: 'T023',
+    title: '巡察整改回头看情况通报',
+    submitter: '纪委书记', dept: '纪委办公室', submittedAt: '2026-09-02',
+    status: '锁定中', priority: '高',
+    background: '上轮巡察反馈问题整改已到期，需向党委通报回头看结果。',
+    objective: '听取整改情况，确认销号结论与持续监督事项。',
+    aiSummary: '反馈 42 项问题已完成整改 39 项，剩余 3 项转入长期跟踪清单。',
+    decisionPoints: ['整改销号确认', '长期跟踪事项'],
+    presenter: '纪委书记', estimatedMins: 20,
+    materials: ['巡察整改回头看报告.pdf'],
+    targetMeetings: ['广汽集团党委会'],
+  },
+  {
+    id: 'T024',
+    title: '党员先锋岗与创先争优评选办法修订',
+    submitter: '宣传部长', dept: '党委工作部', submittedAt: '2026-09-02',
+    status: '已安排', priority: '低',
+    background: '现行评选办法偏重材料申报，需强化实绩导向与一线认可。',
+    objective: '审议评选办法修订稿。',
+    aiSummary: '拟引入一线员工评议权重 30%，压缩材料占比，突出急难险重贡献。',
+    decisionPoints: ['办法修订审批'],
+    presenter: '宣传部长', estimatedMins: 10,
+    materials: ['评选办法修订稿.docx'],
+    targetMeetings: ['广汽集团党委会'],
+  },
+  {
+    id: 'T025',
+    title: '意识形态责任制落实情况报告',
+    submitter: '宣传部长', dept: '党委工作部', submittedAt: '2026-09-03',
+    status: '已安排', priority: '中',
+    background: '按上级要求，需专题听取意识形态责任制落实情况。',
+    objective: '审议年度落实情况报告并明确下步重点。',
+    aiSummary: '报告覆盖阵地管理、舆情应对与员工思想动态，建议加强新媒体矩阵管理。',
+    decisionPoints: ['报告审议通过', '下步重点确认'],
+    presenter: '宣传部长', estimatedMins: 12,
+    materials: ['意识形态责任制落实报告.pdf'],
+    targetMeetings: ['广汽集团党委会'],
+  },
+  {
+    id: 'T026',
+    title: '干部选拔任用与交流轮岗建议名单',
+    submitter: '组织部长', dept: '党委工作部', submittedAt: '2026-09-03',
+    status: '待安排', priority: '高',
+    background: '部分关键岗位空缺与干部培养需要，拟提交交流轮岗建议。',
+    objective: '讨论研究建议名单（按程序另行履行任用手续）。',
+    aiSummary: '涉及 8 个岗位人选建议，强调人岗匹配与廉政意见前置。',
+    decisionPoints: ['建议名单原则同意'],
+    presenter: '组织部长', estimatedMins: 25,
+    materials: ['干部交流轮岗建议.pdf'],
+    targetMeetings: ['广汽集团党委会'],
+    urgency: '急',
+  },
+  {
+    id: 'T027',
+    title: '廉洁风险防控清单年度更新',
+    submitter: '纪委书记', dept: '纪委办公室', submittedAt: '2026-09-04',
+    status: '待安排', priority: '中',
+    background: '结合新业务形态，需更新重点领域廉洁风险点与防控措施。',
+    objective: '审议廉洁风险防控清单（2026 版）。',
+    aiSummary: '新增海外业务、数据安全、经销商返利等 11 个风险点，明确责任部门。',
+    decisionPoints: ['清单审议通过'],
+    presenter: '纪委书记', estimatedMins: 15,
+    materials: ['廉洁风险防控清单2026.pdf'],
+    targetMeetings: ['广汽集团党委会', '广汽集团总经理办公会'],
+  },
+  {
+    id: 'T028',
+    title: '工会经费使用与职工福利改善计划',
+    submitter: '王芳', dept: '人力资源部', submittedAt: '2026-09-04',
+    status: '待安排', priority: '低',
+    background: '职工反映食堂、通勤与文体活动保障不足，需统筹改善。',
+    objective: '审议福利改善计划及经费安排。',
+    aiSummary: '拟安排 2800 万元改善职工福利，重点投向食堂升级与通勤班车优化。',
+    decisionPoints: ['改善计划与经费审批'],
+    presenter: '王芳', estimatedMins: 12,
+    materials: ['职工福利改善计划.pdf'],
+    targetMeetings: ['广汽集团党委会', '广汽集团总经理办公会'],
+  },
+  {
+    id: 'T029',
+    title: '上半年党建工作责任制考核结果',
+    submitter: '组织部长', dept: '党委工作部', submittedAt: '2026-07-28',
+    status: '已上会', priority: '中',
+    background: '完成二级单位党建责任制半年度考核，需向党委汇报结果运用。',
+    objective: '确认考核结果及整改约谈安排。',
+    aiSummary: '23 家单位考核，优秀 6 家、良好 14 家、一般 3 家；拟对一般单位启动约谈。',
+    decisionPoints: ['考核结果确认', '约谈安排'],
+    presenter: '组织部长', estimatedMins: 15,
+    materials: ['上半年党建责任制考核报告.pdf'],
+    targetMeetings: ['广汽集团党委会'],
+    outcomes: [{
+      meetingId: 'M2026-08-PARTY-S',
+      meetingTitle: '集团2026年8月党委会',
+      meetingDate: '2026-08-22',
+      conclusion: '会议确认考核结果，同意对一般等次单位进行约谈提醒，由党委工作部跟踪整改。',
+      minutesFileName: '集团2026年8月党委会会议纪要.pdf',
+      minutesFileSize: '680 KB',
+    }],
+  },
+  {
+    id: 'T030',
+    title: '党风廉政建设半年度工作汇报',
+    submitter: '纪委书记', dept: '纪委办公室', submittedAt: '2026-07-29',
+    status: '已上会', priority: '高',
+    background: '半年度党风廉政建设任务完成情况需向党委专题汇报。',
+    objective: '审议工作通报，明确下半年重点。',
+    aiSummary: '查处问题线索 17 件，谈话函询 9 人；下半年重点压实「一岗双责」。',
+    decisionPoints: ['工作通报确认', '下半年重点'],
+    presenter: '纪委书记', estimatedMins: 18,
+    materials: ['党风廉政半年度通报.pdf'],
+    targetMeetings: ['广汽集团党委会'],
+    outcomes: [{
+      meetingId: 'M2026-08-PARTY-S',
+      meetingTitle: '集团2026年8月党委会',
+      meetingDate: '2026-08-22',
+      conclusion: '会议原则通过半年度通报，要求各单位党委书记切实履行「一岗双责」，纪委加强监督检查。',
+      minutesFileName: '集团2026年8月党委会会议纪要.pdf',
+      minutesFileSize: '680 KB',
+    }],
+  },
+  {
+    id: 'T031',
+    title: '新能源汽车出口退税政策影响评估',
+    submitter: '李建国', dept: '战略发展部', submittedAt: '2026-07-25',
+    status: '已上会', priority: '高',
+    background: '出口退税政策调整影响海外毛利，需评估应对措施。',
+    objective: '确认应对策略与预算影响。',
+    aiSummary: '预计全年毛利影响约 1.1 亿元，建议优化产品组合并申请地方配套支持。',
+    decisionPoints: ['应对策略确认', '预算影响审批'],
+    presenter: '李建国', estimatedMins: 20,
+    materials: ['出口退税影响评估.pdf'],
+    targetMeetings: ['广汽集团总经理办公会'],
+    outcomes: [{
+      meetingId: 'M2026-08-GM-S',
+      meetingTitle: '集团2026年8月总经理办公会（连开）',
+      meetingDate: '2026-08-22',
+      conclusion: '会议同意按评估意见调整出口产品组合，并授权战略发展部对接地方配套支持。',
+      minutesFileName: '集团2026年8月总办会+党委会连开纪要.pdf',
+      minutesFileSize: '1.1 MB',
+    }],
+  },
+  {
+    id: 'T032',
+    title: '智能驾驶算法合作伙伴遴选结果',
+    submitter: '张慧敏', dept: '信息技术部', submittedAt: '2026-07-26',
+    status: '已上会', priority: '中',
+    background: '智能驾驶算法合作完成技术评标，需确认入围伙伴。',
+    objective: '审议遴选结果并授权启动商务谈判。',
+    aiSummary: '入围 2 家头部伙伴，建议双源并行，首期合同额不超过 8600 万元。',
+    decisionPoints: ['入围名单确认', '商务谈判授权'],
+    presenter: '张慧敏', estimatedMins: 15,
+    materials: ['算法伙伴评标报告.pdf'],
+    targetMeetings: ['广汽集团总经理办公会'],
+    outcomes: [{
+      meetingId: 'M2026-08-GM-S',
+      meetingTitle: '集团2026年8月总经理办公会（连开）',
+      meetingDate: '2026-08-22',
+      conclusion: '会议同意双源入围方案，授权信息技术部启动商务谈判，首期合同额上限 8600 万元。',
+      minutesFileName: '集团2026年8月总办会+党委会连开纪要.pdf',
+      minutesFileSize: '1.1 MB',
+    }],
+  },
 ]
 
 const INIT_MEETINGS: Meeting[] = [
+  {
+    id: 'M2026-09-GM',
+    title: '集团2026年9月总经理办公会',
+    typeId: 'gac-gm-office',
+    date: '2026-09-12', time: '09:00', endTime: '11:00',
+    location: '总部大厦28层第一会议室',
+    chair: '马总（集团总经理）',
+    attendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '王总助', '各部门主要负责人', '李建国', '陈志远', '张慧敏'],
+    observers: ['财务本部 刘会计', '品牌公关部 周薇'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '集团办公室',
+    meetingTopics: [
+      { topicId: 'T013', order: 1, customMins: 20 },
+      { topicId: 'T014', order: 2, customMins: 25 },
+      { topicId: 'T015', order: 3, customMins: 18 },
+      { topicId: 'T016', order: 4, customMins: 15 },
+    ],
+    status: '进行中',
+    notes: '',
+    sessionId: 'S2026-09-12',
+  },
+  {
+    id: 'M2026-09-PARTY',
+    title: '集团2026年9月党委会',
+    typeId: 'gac-party',
+    date: '2026-09-12', time: '11:00', endTime: '12:30',
+    location: '总部大厦28层第一会议室',
+    chair: '马总（党委书记）',
+    attendees: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长', '王总助'],
+    observers: ['党委工作部 组织处列席'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '党委办公室',
+    meetingTopics: [
+      { topicId: 'T021', order: 1, customMins: 12 },
+      { topicId: 'T022', order: 2, customMins: 15 },
+      { topicId: 'T023', order: 3, customMins: 20 },
+    ],
+    status: '进行中',
+    notes: '',
+    sessionId: 'S2026-09-12',
+  },
+  {
+    id: 'M2026-10-GM',
+    title: '集团2026年10月总经理办公会',
+    typeId: 'gac-gm-office',
+    date: '2026-10-15', time: '09:00', endTime: '11:00',
+    location: '总部大厦28层第一会议室',
+    chair: '马总（集团总经理）',
+    attendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '王总助', '孙丽华', '周建平', '赵国栋'],
+    observers: ['财务本部 刘会计'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '集团办公室',
+    meetingTopics: [
+      { topicId: 'T017', order: 1, customMins: 20 },
+      { topicId: 'T018', order: 2, customMins: 12 },
+      { topicId: 'T019', order: 3, customMins: 15 },
+    ],
+    status: '筹备中',
+    notes: '',
+    sessionId: 'S2026-10-15',
+  },
+  {
+    id: 'M2026-10-PARTY',
+    title: '集团2026年10月党委会',
+    typeId: 'gac-party',
+    date: '2026-10-15', time: '11:00', endTime: '12:30',
+    location: '总部大厦28层第一会议室',
+    chair: '马总（党委书记）',
+    attendees: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长', '王总助'],
+    observers: ['党委工作部 组织处列席'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '党委办公室',
+    meetingTopics: [
+      { topicId: 'T024', order: 1, customMins: 10 },
+      { topicId: 'T025', order: 2, customMins: 12 },
+    ],
+    status: '筹备中',
+    notes: '',
+    sessionId: 'S2026-10-15',
+  },
+  {
+    id: 'M2026-08-GM-S',
+    title: '集团2026年8月总经理办公会（连开）',
+    typeId: 'gac-gm-office',
+    date: '2026-08-22', time: '09:00', endTime: '11:00',
+    location: '总部大厦28层第一会议室',
+    chair: '马总（集团总经理）',
+    attendees: ['马总（集团总经理）', '李副总（常务）', '张副总（运营）', '王总助', '李建国', '张慧敏'],
+    observers: ['财务本部 刘会计'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '集团办公室',
+    meetingTopics: [
+      { topicId: 'T031', order: 1, customMins: 20 },
+      { topicId: 'T032', order: 2, customMins: 15 },
+    ],
+    status: '已结束',
+    notes: '与党委会同日连开，纪要已归档',
+    sessionId: 'S2026-08-22',
+  },
+  {
+    id: 'M2026-08-PARTY-S',
+    title: '集团2026年8月党委会',
+    typeId: 'gac-party',
+    date: '2026-08-22', time: '11:00', endTime: '12:30',
+    location: '总部大厦28层第一会议室',
+    chair: '马总（党委书记）',
+    attendees: ['马总（党委书记）', '李副书记', '纪委书记', '组织部长', '宣传部长'],
+    observers: ['党委工作部 组织处列席'],
+    disciplineStaff: ['纪委办公室 陈监察'],
+    organizer: '王总助',
+    organizeDept: '党委办公室',
+    meetingTopics: [
+      { topicId: 'T029', order: 1, customMins: 15 },
+      { topicId: 'T030', order: 2, customMins: 18 },
+    ],
+    status: '已结束',
+    notes: '与总办会同日连开，纪要已归档',
+    sessionId: 'S2026-08-22',
+  },
   {
     id: 'M2026-08',
     title: '集团2026年8月总经理办公会',
@@ -778,6 +1232,45 @@ const INIT_MEETINGS: Meeting[] = [
     meetingTopics: [{ topicId: 'T009', order: 1 }],
     status: '已结束',
     notes: '会议纪要已归档',
+  },
+]
+
+const INIT_SESSIONS: MeetingSession[] = [
+  {
+    id: 'S2026-10-15',
+    name: '10·15 总办会 + 党委会连开',
+    date: '2026-10-15',
+    time: '09:00',
+    endTime: '12:30',
+    location: '总部大厦28层第一会议室',
+    organizer: '王总助',
+    organizeDept: '集团办公室',
+    meetingIds: ['M2026-10-GM', 'M2026-10-PARTY'],
+    notes: '筹备中组合；可分别编排议程后一键开始。',
+  },
+  {
+    id: 'S2026-09-12',
+    name: '9·12 总办会 + 党委会连开',
+    date: '2026-09-12',
+    time: '09:00',
+    endTime: '12:30',
+    location: '总部大厦28层第一会议室',
+    organizer: '王总助',
+    organizeDept: '集团办公室',
+    meetingIds: ['M2026-09-GM', 'M2026-09-PARTY'],
+    notes: '同日连开；会前组合通知一次推送，会中可按子会切换。',
+  },
+  {
+    id: 'S2026-08-22',
+    name: '8·22 总办会 + 党委会连开',
+    date: '2026-08-22',
+    time: '09:00',
+    endTime: '12:30',
+    location: '总部大厦28层第一会议室',
+    organizer: '王总助',
+    organizeDept: '集团办公室',
+    meetingIds: ['M2026-08-GM-S', 'M2026-08-PARTY-S'],
+    notes: '已结束组合；纪要已按子会归档。',
   },
 ]
 
@@ -892,6 +1385,162 @@ function SectionHeader({ title, subtitle, action }: {
   )
 }
 
+function currentYearMonth() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** 年月选择：仅点选；清空后框内完全空白；右侧 × 仅清除日期 */
+function MonthPicker({ value, onChange, style }: {
+  value: string
+  onChange: (v: string) => void
+  style?: React.CSSProperties
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+  const label = value
+    ? `${value.slice(0, 4)}年${value.slice(5, 7)}月`
+    : ''
+
+  const openPicker = () => {
+    const el = ref.current
+    if (!el) return
+    try {
+      el.showPicker?.()
+    } catch {
+      el.focus()
+      el.click()
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'relative', width: 160, height: 36,
+        border: '1px solid var(--border)', borderRadius: 6, background: '#fff',
+        display: 'flex', alignItems: 'center', padding: '0 6px 0 12px',
+        fontSize: 13, color: 'var(--foreground)', fontFamily: 'inherit',
+        ...style,
+      }}
+    >
+      <button
+        type="button"
+        onClick={openPicker}
+        style={{
+          flex: 1, minWidth: 0, height: '100%', border: 'none', background: 'transparent',
+          padding: 0, margin: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+          fontSize: 13, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}
+      >
+        {label || '\u00a0'}
+      </button>
+      {value ? (
+        <button
+          type="button"
+          title="清除日期"
+          aria-label="清除日期"
+          onClick={e => { e.stopPropagation(); onChange('') }}
+          style={{
+            flexShrink: 0, width: 22, height: 22, border: 'none', borderRadius: 4,
+            background: 'transparent', color: 'var(--muted-foreground)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, lineHeight: 1,
+            fontFamily: 'inherit', padding: 0,
+          }}
+        >
+          ×
+        </button>
+      ) : (
+        <span style={{ flexShrink: 0, width: 22, textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 12, lineHeight: 1 }} aria-hidden>▾</span>
+      )}
+      <input
+        ref={ref}
+        type="month"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => e.preventDefault()}
+        onPaste={e => e.preventDefault()}
+        tabIndex={-1}
+        aria-hidden
+        style={{
+          position: 'absolute', left: 0, top: 0, width: 1, height: 1, opacity: 0,
+          border: 'none', margin: 0, padding: 0, pointerEvents: 'none',
+        }}
+      />
+    </div>
+  )
+}
+
+/** 通用分页：默认每页 10 条 */
+function PaginationBar({
+  total,
+  page,
+  pageSize = 10,
+  onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = [10, 20, 50],
+}: {
+  total: number
+  page: number
+  pageSize?: number
+  onPageChange: (p: number) => void
+  onPageSizeChange?: (size: number) => void
+  pageSizeOptions?: number[]
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1
+  const to = Math.min(safePage * pageSize, total)
+
+  const pages: (number | '…')[] = []
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i)
+  } else {
+    pages.push(1)
+    if (safePage > 3) pages.push('…')
+    for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i)
+    if (safePage < totalPages - 2) pages.push('…')
+    pages.push(totalPages)
+  }
+
+  const btnStyle = (active = false, disabled = false): React.CSSProperties => ({
+    minWidth: 32, height: 32, padding: '0 8px', borderRadius: 5, fontSize: 12, fontFamily: 'inherit',
+    border: active ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+    background: active ? 'var(--secondary)' : '#fff',
+    color: disabled ? '#c0c6d0' : active ? 'var(--primary)' : 'var(--foreground)',
+    cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: active ? 600 : 500,
+  })
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 14px', borderTop: '1px solid var(--border)', background: 'var(--secondary)' }}>
+      <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+        共 {total} 条{total > 0 ? `，显示 ${from}–${to}` : ''}
+      </span>
+      {onPageSizeChange && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted-foreground)', marginLeft: 4 }}>
+          每页
+          <select
+            className="field-select"
+            value={pageSize}
+            onChange={e => onPageSizeChange(Number(e.target.value))}
+            style={{ width: 72, height: 30, padding: '0 28px 0 10px', fontSize: 12, backgroundPosition: 'right 8px center' }}
+          >
+            {pageSizeOptions.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          条
+        </label>
+      )}
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button type="button" style={btnStyle(false, safePage <= 1)} disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>上一页</button>
+        {pages.map((p, i) => p === '…' ? (
+          <span key={`e${i}`} style={{ width: 24, textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 12 }}>…</span>
+        ) : (
+          <button key={p} type="button" style={btnStyle(p === safePage)} onClick={() => onPageChange(p)}>{p}</button>
+        ))}
+        <button type="button" style={btnStyle(false, safePage >= totalPages)} disabled={safePage >= totalPages} onClick={() => onPageChange(safePage + 1)}>下一页</button>
+      </div>
+    </div>
+  )
+}
+
 function Card({ children, className = '', style = {} }: {
   children: React.ReactNode; className?: string; style?: React.CSSProperties
 }) {
@@ -906,9 +1555,38 @@ function Card({ children, className = '', style = {} }: {
   )
 }
 
+/** 侧栏人员等信息默认折叠，点击展开 */
+function CollapsibleSidebarCard({
+  title, defaultOpen = false, children,
+}: {
+  title: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <Card style={{ padding: '14px 18px' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)' }}>{title}</span>
+        <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 500, flexShrink: 0 }}>
+          {open ? '收起' : '展开'}
+        </span>
+      </button>
+      {open && <div style={{ marginTop: 12 }}>{children}</div>}
+    </Card>
+  )
+}
+
 function Btn({ label, variant = 'primary', onClick, icon, disabled = false, small = false }: {
   label: string; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
-  onClick?: () => void; icon?: string; disabled?: boolean; small?: boolean
+  onClick?: () => void; icon?: React.ReactNode; disabled?: boolean; small?: boolean
 }) {
   const styles: Record<string, React.CSSProperties> = {
     primary: { background: 'var(--primary)', color: '#fff', border: '1px solid var(--primary)' },
@@ -1211,10 +1889,10 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office', mee
   const [date, setDate] = useState(meeting?.date ?? '2026-09-12')
   const [time, setTime] = useState(meeting?.time ?? '09:00')
   const [endTime, setEndTime] = useState(meeting?.endTime ?? '12:00')
-  const [location, setLocation] = useState(meeting?.location ?? '总部大厦28层第一会议室')
+  const [location, setLocation] = useState(meeting?.location ?? (typeMeta.usualLocation || '总部大厦28层第一会议室'))
   const [chair, setChair] = useState(meeting?.chair ?? (typeMeta.usualChair || '马总（集团总经理）'))
-  const [organizer, setOrganizer] = useState(meeting?.organizer ?? '王总助')
-  const [organizeDept, setOrganizeDept] = useState(meeting?.organizeDept ?? '集团办公室')
+  const [organizer, setOrganizer] = useState(meeting?.organizer ?? (typeMeta.usualOrganizer || '王总助'))
+  const [organizeDept, setOrganizeDept] = useState(meeting?.organizeDept ?? (typeMeta.usualOrganizeDept || '集团办公室'))
   const [attendees, setAttendees] = useState<string[]>(meeting?.attendees ?? [])
   const [observers, setObservers] = useState<string[]>(meeting?.observers ?? [])
   const [disciplineStaff, setDisciplineStaff] = useState<string[]>(meeting?.disciplineStaff ?? [])
@@ -1229,6 +1907,9 @@ function NewMeetingModal({ onClose, onSave, defaultTypeId = 'gac-gm-office', mee
     setObservers(selectedType.usualObservers)
     setDisciplineStaff(selectedType.usualDiscipline)
     if (selectedType.usualChair) setChair(selectedType.usualChair)
+    if (selectedType.usualLocation) setLocation(selectedType.usualLocation)
+    if (selectedType.usualOrganizer) setOrganizer(selectedType.usualOrganizer)
+    if (selectedType.usualOrganizeDept) setOrganizeDept(selectedType.usualOrganizeDept)
     setRosterSeeded(true)
   }, [typeId, meetingTypes, isEdit, rosterSeeded])
 
@@ -1599,6 +2280,416 @@ function NotifyModal({ meeting, onClose, onSend }: {
   )
 }
 
+// ─── 议程整体安排图（单场 / 组合共用，Canvas 导出 JPG）─────────────────────────
+
+function parseHM(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+
+function fmtHM(total: number) {
+  const n = ((total % (24 * 60)) + 24 * 60) % (24 * 60)
+  return `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`
+}
+
+type AgendaOverviewBlock = {
+  key: string
+  label: string
+  time: string
+  endTime: string
+  chair?: string
+  items: { order: number; title: string; presenter: string; dept: string; mins: number; start: string; end: string }[]
+}
+
+const AGENDA_SEG_COLORS = ['#1b365d', '#2f6f5e', '#b07a3a', '#3d5a80', '#2c6e7a']
+
+function buildAgendaBlocks(meetings: Meeting[], topics: Topic[], typeNameOf: (typeId: string) => string): AgendaOverviewBlock[] {
+  return [...meetings]
+    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
+    .map(m => {
+      const mts = [...m.meetingTopics].sort((a, b) => a.order - b.order)
+      let cursor = parseHM(m.time)
+      const items = mts.map(mt => {
+        const t = topics.find(x => x.id === mt.topicId)
+        const mins = mt.customMins ?? t?.estimatedMins ?? 0
+        const start = fmtHM(cursor)
+        cursor += mins
+        return {
+          order: mt.order,
+          title: t?.title || mt.topicId,
+          presenter: t?.presenter || '—',
+          dept: t?.dept || '',
+          mins,
+          start,
+          end: fmtHM(cursor),
+        }
+      })
+      return {
+        key: m.id,
+        label: typeNameOf(m.typeId) || m.title,
+        time: m.time,
+        endTime: m.endTime,
+        chair: m.chair,
+        items,
+      }
+    })
+}
+
+function canvasRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+) {
+  const rr = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x + rr, y)
+  ctx.arcTo(x + w, y, x + w, y + h, rr)
+  ctx.arcTo(x + w, y + h, x, y + h, rr)
+  ctx.arcTo(x, y + h, x, y, rr)
+  ctx.arcTo(x, y, x + w, y, rr)
+  ctx.closePath()
+}
+
+function canvasWrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  if (!text) return ['']
+  const lines: string[] = []
+  let line = ''
+  for (const ch of text) {
+    const test = line + ch
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line)
+      line = ch
+    } else {
+      line = test
+    }
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
+/** 在 canvas 上绘制议程整体安排图，返回逻辑宽高（未乘 scale） */
+function paintAgendaOverview(
+  ctx: CanvasRenderingContext2D,
+  opts: {
+    title: string
+    subtitle?: string
+    meta: string[]
+    blocks: AgendaOverviewBlock[]
+    width?: number
+  },
+): { width: number; height: number } {
+  const W = opts.width ?? 900
+  const padX = 44
+  const left = padX
+  const contentW = W - padX * 2
+  const totalItems = opts.blocks.reduce((s, b) => s + b.items.length, 0)
+  const totalMins = opts.blocks.reduce((s, b) => s + b.items.reduce((x, it) => x + it.mins, 0), 0)
+  const metaList = opts.meta.filter(Boolean)
+  const isMulti = opts.blocks.length > 1
+  const afterHeader = 28
+  const afterDivider = 22
+
+  // 顶栏：会议名称（可折行）
+  ctx.font = '700 20px "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif'
+  const headerTitleLines = canvasWrapText(ctx, opts.title, contentW)
+  const barH = Math.max(64, 28 + headerTitleLines.length * 26 + 20)
+
+  // ── 与绘制同步的高度测算 ──
+  let y = barH + afterHeader
+  if (opts.subtitle) y += 22
+  {
+    let mx = 0
+    let rows = 1
+    metaList.forEach(m => {
+      ctx.font = '500 12px "PingFang SC", "Microsoft YaHei", sans-serif'
+      const tw = ctx.measureText(m).width + 20
+      if (mx + tw > contentW && mx > 0) { mx = 0; rows += 1 }
+      mx += tw + 8
+    })
+    y += 8 + rows * 30 + 14
+  }
+  if (!isMulti) y += 14
+  y += afterDivider
+  opts.blocks.forEach((b, bi) => {
+    if (isMulti) y += (bi > 0 ? 12 : 0) + 28
+    if (b.items.length === 0) y += 48
+    else {
+      b.items.forEach(it => {
+        ctx.font = '600 15px "PingFang SC", "Microsoft YaHei", sans-serif'
+        const lines = canvasWrapText(ctx, it.title, contentW - 240)
+        y += Math.max(52, 18 + lines.length * 20 + 18) + 6
+      })
+    }
+  })
+  y += 14 + 24 + 28
+  const H = Math.max(420, y + 24)
+
+  // ── 绘制：单层成图 ──
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, W, H)
+
+  ctx.fillStyle = '#1b365d'
+  ctx.fillRect(0, 0, W, barH)
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'
+  ctx.beginPath()
+  ctx.arc(W - 36, 8, 64, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '700 20px "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif'
+  const headerTextTop = 28 + 16
+  headerTitleLines.forEach((line, i) => {
+    ctx.fillText(line, left, headerTextTop + i * 26)
+  })
+
+  let cy = barH + afterHeader
+
+  if (opts.subtitle) {
+    ctx.fillStyle = '#5c6578'
+    ctx.font = '500 13px "PingFang SC", "Microsoft YaHei", sans-serif'
+    ctx.fillText(opts.subtitle, left, cy + 2)
+    cy += 22
+  }
+
+  cy += 8
+  let mx = left
+  metaList.forEach(m => {
+    ctx.font = '500 12px "PingFang SC", "Microsoft YaHei", sans-serif'
+    const tw = ctx.measureText(m).width + 20
+    if (mx + tw > left + contentW && mx > left) {
+      mx = left
+      cy += 30
+    }
+    ctx.fillStyle = '#f0f4fa'
+    canvasRoundRect(ctx, mx, cy - 14, tw, 26, 13)
+    ctx.fill()
+    ctx.fillStyle = '#3d4a6b'
+    ctx.fillText(m, mx + 10, cy + 3)
+    mx += tw + 8
+  })
+  cy += 32
+
+  ctx.strokeStyle = '#e2e8f0'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(left, cy)
+  ctx.lineTo(left + contentW, cy)
+  ctx.stroke()
+  cy += afterDivider
+
+  opts.blocks.forEach((b, bi) => {
+    if (isMulti) {
+      if (bi > 0) cy += 12
+      const accent = AGENDA_SEG_COLORS[bi % AGENDA_SEG_COLORS.length]
+      ctx.fillStyle = accent
+      canvasRoundRect(ctx, left, cy - 10, 4, 22, 2)
+      ctx.fill()
+      ctx.fillStyle = '#1a2332'
+      ctx.font = '700 15px "PingFang SC", "Microsoft YaHei", sans-serif'
+      ctx.fillText(b.label, left + 14, cy + 4)
+      const rightInfo = `${b.time}–${b.endTime}${b.chair ? `  ·  主持 ${b.chair}` : ''}`
+      ctx.font = '500 12px "JetBrains Mono", "SF Mono", monospace'
+      ctx.fillStyle = '#5c6578'
+      const rw = ctx.measureText(rightInfo).width
+      ctx.fillText(rightInfo, left + contentW - rw, cy + 4)
+      cy += 28
+    }
+
+    if (b.items.length === 0) {
+      ctx.fillStyle = '#f8fafc'
+      canvasRoundRect(ctx, left, cy - 6, contentW, 40, 8)
+      ctx.fill()
+      ctx.fillStyle = '#94a3b8'
+      ctx.font = '500 13px "PingFang SC", "Microsoft YaHei", sans-serif'
+      ctx.fillText('暂无议题', left + 16, cy + 18)
+      cy += 48
+      return
+    }
+
+    b.items.forEach((it, ii) => {
+      const titleMax = contentW - 240
+      ctx.font = '600 15px "PingFang SC", "Microsoft YaHei", sans-serif'
+      const lines = canvasWrapText(ctx, it.title, titleMax)
+      const rowH = Math.max(52, 18 + lines.length * 20 + 18)
+
+      if (ii % 2 === 0) {
+        ctx.fillStyle = '#f7f9fc'
+        canvasRoundRect(ctx, left, cy - 4, contentW, rowH, 8)
+        ctx.fill()
+      }
+
+      ctx.fillStyle = '#1b365d'
+      ctx.font = '700 13px "JetBrains Mono", "SF Mono", monospace'
+      ctx.fillText(`${it.start}–${it.end}`, left + 14, cy + 18)
+
+      const ox = left + 118
+      ctx.fillStyle = AGENDA_SEG_COLORS[bi % AGENDA_SEG_COLORS.length]
+      ctx.beginPath()
+      ctx.arc(ox + 10, cy + 14, 10, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#fff'
+      ctx.font = '700 11px "PingFang SC", sans-serif'
+      const num = String(it.order)
+      ctx.fillText(num, ox + 10 - ctx.measureText(num).width / 2, cy + 18)
+
+      const tx = ox + 28
+      ctx.fillStyle = '#1a2332'
+      ctx.font = '600 15px "PingFang SC", "Microsoft YaHei", sans-serif'
+      lines.forEach((line, li) => ctx.fillText(line, tx, cy + 18 + li * 20))
+      ctx.fillStyle = '#5c6578'
+      ctx.font = '500 12px "PingFang SC", "Microsoft YaHei", sans-serif'
+      const who = it.dept ? `${it.presenter} · ${it.dept}` : it.presenter
+      ctx.fillText(`汇报  ${who}`, tx, cy + 18 + lines.length * 20 + 4)
+
+      const minsLabel = `${it.mins} 分钟`
+      ctx.font = '600 12px "PingFang SC", "Microsoft YaHei", sans-serif'
+      const mw = ctx.measureText(minsLabel).width
+      ctx.fillStyle = '#eef2f7'
+      canvasRoundRect(ctx, left + contentW - mw - 28, cy + 6, mw + 16, 24, 12)
+      ctx.fill()
+      ctx.fillStyle = '#3d4a6b'
+      ctx.fillText(minsLabel, left + contentW - mw - 20, cy + 22)
+
+      cy += rowH + 6
+    })
+  })
+
+  cy += 14
+  ctx.strokeStyle = '#e2e8f0'
+  ctx.beginPath()
+  ctx.moveTo(left, cy)
+  ctx.lineTo(left + contentW, cy)
+  ctx.stroke()
+  cy += 28
+  ctx.fillStyle = '#5c6578'
+  ctx.font = '500 12px "PingFang SC", "Microsoft YaHei", sans-serif'
+  ctx.fillText(`共 ${totalItems} 项议题  ·  合计约 ${totalMins} 分钟`, left, cy)
+  ctx.font = '700 14px "Noto Serif SC", "PingFang SC", serif'
+  ctx.fillStyle = '#1b365d'
+  const brand = '智会'
+  ctx.fillText(brand, left + contentW - ctx.measureText(brand).width, cy)
+
+  return { width: W, height: H }
+}
+
+function renderAgendaOverviewCanvas(
+  title: string,
+  subtitle: string | undefined,
+  meta: string[],
+  blocks: AgendaOverviewBlock[],
+  scale = 2,
+) {
+  const measure = document.createElement('canvas')
+  measure.width = 1
+  measure.height = 1
+  const mctx = measure.getContext('2d')
+  if (!mctx) throw new Error('canvas unavailable')
+  const { width, height } = paintAgendaOverview(mctx, { title, subtitle, meta, blocks })
+  const canvas = document.createElement('canvas')
+  canvas.width = width * scale
+  canvas.height = height * scale
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('canvas unavailable')
+  ctx.scale(scale, scale)
+  paintAgendaOverview(ctx, { title, subtitle, meta, blocks, width })
+  return { canvas, width, height }
+}
+
+function AgendaOverviewModal({
+  title,
+  subtitle,
+  meta,
+  blocks,
+  fileBase,
+  onClose,
+  onDownloaded,
+}: {
+  title: string
+  subtitle?: string
+  meta: string[]
+  blocks: AgendaOverviewBlock[]
+  fileBase: string
+  onClose: () => void
+  onDownloaded?: () => void
+}) {
+  const previewRef = useRef<HTMLCanvasElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [previewH, setPreviewH] = useState(480)
+  const metaKey = meta.join('|')
+  const blocksKey = blocks.map(b => `${b.key}:${b.items.map(i => `${i.order}-${i.title}-${i.mins}`).join(',')}`).join(';')
+
+  useEffect(() => {
+    const el = previewRef.current
+    if (!el) return
+    try {
+      const { canvas, width, height } = renderAgendaOverviewCanvas(title, subtitle, meta, blocks, 2)
+      const ctx = el.getContext('2d')
+      if (!ctx) return
+      el.width = canvas.width
+      el.height = canvas.height
+      ctx.clearRect(0, 0, el.width, el.height)
+      ctx.drawImage(canvas, 0, 0)
+      setPreviewH(Math.round(height * (Math.min(700, width) / width)))
+    } catch {
+      /* ignore */
+    }
+  }, [title, subtitle, metaKey, blocksKey])
+
+  const downloadJpg = () => {
+    setBusy(true)
+    try {
+      const { canvas } = renderAgendaOverviewCanvas(title, subtitle, meta, blocks, 2)
+      canvas.toBlob(blob => {
+        setBusy(false)
+        if (!blob) return
+        downloadBlob(blob, `${fileBase}-整体安排图.jpg`)
+        onDownloaded?.()
+      }, 'image/jpeg', 0.92)
+    } catch {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <ModalShell
+      title="议程整体安排图"
+      kicker={title}
+      width={780}
+      zIndex={1100}
+      onClose={onClose}
+      footer={
+        <ModalFoot left={<span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>预览即成图 · 导出高清 JPG</span>}>
+          <Btn label="关闭" variant="ghost" onClick={onClose} />
+          <Btn label={busy ? '生成中…' : '下载 JPG'} variant="primary" disabled={busy} onClick={downloadJpg} />
+        </ModalFoot>
+      }
+    >
+      <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 12 }}>
+        下方为最终成图预览，点击「下载 JPG」即可得到图片。
+      </div>
+      <div style={{
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: '#f8fafc',
+        padding: 16,
+        overflow: 'visible',
+      }}>
+        <canvas
+          ref={previewRef}
+          style={{
+            width: '100%',
+            maxWidth: 700,
+            height: previewH,
+            display: 'block',
+            margin: '0 auto',
+            background: '#fff',
+            borderRadius: 4,
+          }}
+        />
+      </div>
+    </ModalShell>
+  )
+}
+
 // ─── Meeting Detail View ──────────────────────────────────────────────────────
 
 function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete, onNav }: {
@@ -1610,15 +2701,17 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
   onDelete?: () => void
   onNav: (s: NavSection, meetingId?: string) => void
 }) {
+  const { meetingTypes } = useMeetingCatalog()
   const [showPicker, setShowPicker] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [actionToast, setActionToast] = useState('')
   const [showNotifyModal, setShowNotifyModal] = useState(false)
+  const [showAgendaOverview, setShowAgendaOverview] = useState(false)
   const [detailTopic, setDetailTopic] = useState<Topic | null>(null)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [overIdx, setOverIdx] = useState<number | null>(null)
   const meetingTopics = [...meeting.meetingTopics].sort((a, b) => a.order - b.order)
-  const canEditAgenda = meeting.status !== '已结束'
+  const canEditAgenda = meeting.status === '筹备中'
 
   const fireToast = (msg: string) => { setActionToast(msg); setTimeout(() => setActionToast(''), 3200) }
 
@@ -1655,20 +2748,6 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
       if (t.status === '已安排') return { ...t, status: '待安排' }
       return t
     }))
-  }
-
-  const moveUp = (idx: number) => {
-    if (idx === 0) return
-    const arr = [...meetingTopics]
-    ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
-    onUpdate({ ...meeting, meetingTopics: arr.map((x, i) => ({ ...x, order: i + 1 })) })
-  }
-
-  const moveDown = (idx: number) => {
-    if (idx === meetingTopics.length - 1) return
-    const arr = [...meetingTopics]
-    ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
-    onUpdate({ ...meeting, meetingTopics: arr.map((x, i) => ({ ...x, order: i + 1 })) })
   }
 
   const reorderAgenda = (from: number, to: number) => {
@@ -1770,14 +2849,43 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
         />
       )}
 
+      {showAgendaOverview && (
+        <AgendaOverviewModal
+          title={meeting.title}
+          meta={[
+            `${meeting.date} ${meeting.time}–${meeting.endTime}`,
+            meeting.location,
+            meeting.chair ? `主持 ${meeting.chair}` : '',
+            meeting.organizer ? `组织 ${meeting.organizer}` : '',
+          ].filter(Boolean)}
+          blocks={buildAgendaBlocks([meeting], topics, id => meetingTypes.find(t => t.id === id)?.name || '')}
+          fileBase={meeting.title.replace(/[\\/:*?"<>|]/g, '_')}
+          onClose={() => setShowAgendaOverview(false)}
+          onDownloaded={() => fireToast('整体安排图已下载')}
+        />
+      )}
+
       {/* Breadcrumb + header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, fontSize: 13, color: 'var(--muted-foreground)' }}>
         <span style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: 500 }} onClick={onBack}>← 会议列表</span>
         <span>›</span>
         <span style={{ color: 'var(--foreground)', flex: 1 }}>{meeting.title}</span>
-        {meeting.status !== '已结束' && (
-          <Btn label="编辑会议信息" variant="secondary" small onClick={() => setShowEdit(true)} />
-        )}
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          {meeting.status !== '已结束' && (
+            <Btn label="编辑会议" variant="secondary" small onClick={() => setShowEdit(true)} />
+          )}
+          {onDelete && meeting.status === '筹备中' && (
+            <Btn
+              label="删除会议"
+              variant="danger"
+              small
+              onClick={() => {
+                if (!window.confirm(`确认删除会议「${meeting.title}」？`)) return
+                onDelete()
+              }}
+            />
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
@@ -1817,7 +2925,9 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
             </div>
 
             {meetingTopics.length === 0 && (
-              <div className="empty">暂未安排议题，可从已审查议题中添加</div>
+              <div className="empty">
+                {canEditAgenda ? '暂未安排议题，可从已审查议题中添加' : meeting.status === '进行中' ? '会议进行中，不可再增加议题' : '暂无议题'}
+              </div>
             )}
 
             {(() => {
@@ -1890,13 +3000,45 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
                         </div>
                       </div>
 
-                      {/* Content */}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>{t.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 8 }}>
-                          汇报人：{t.presenter} · {t.dept}
+                      {/* Content + actions */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>{t.title}</div>
+                            <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+                              汇报人：{t.presenter} · {t.dept}
+                            </div>
+                          </div>
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <input
+                              type="number"
+                              min={5}
+                              max={120}
+                              value={mins}
+                              onChange={e => updateMins(mt.topicId, Number(e.target.value))}
+                              disabled={!canEditAgenda}
+                              style={{ width: 54, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center', fontWeight: 600, color: 'var(--foreground)', background: '#fafbfd' }}
+                            />
+                            <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>分钟</span>
+                            {canEditAgenda && (
+                              <button
+                                type="button"
+                                onClick={() => removeTopic(mt.topicId)}
+                                disabled={t.status === '锁定中' || t.status === '已上会'}
+                                title={t.status === '锁定中' || t.status === '已上会' ? '已锁定/已上会不可移出' : '移除'}
+                                style={{
+                                  width: 28, height: 28, border: '1px solid #fecaca', borderRadius: 4, background: '#fef2f2',
+                                  cursor: (t.status === '锁定中' || t.status === '已上会') ? 'not-allowed' : 'pointer',
+                                  fontSize: 12, color: '#dc2626',
+                                  opacity: (t.status === '锁定中' || t.status === '已上会') ? 0.4 : 1,
+                                }}
+                              >✕</button>
+                            )}
+                          </div>
                         </div>
-                        {/* AI summary collapsed */}
                         <div style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                           {t.outcomes?.[0]?.conclusion || t.aiSummary}
                         </div>
@@ -1904,52 +3046,6 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
                           <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 6 }}>点击查看审议结论与对应纪要</div>
                         )}
                       </div>
-
-                      {/* Mins editor */}
-                      <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <input
-                            type="number"
-                            min={5}
-                            max={120}
-                            value={mins}
-                            onClick={e => e.stopPropagation()}
-                            onChange={e => updateMins(mt.topicId, Number(e.target.value))}
-                            disabled={!canEditAgenda}
-                            style={{ width: 54, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center', fontWeight: 600, color: 'var(--foreground)', background: '#fafbfd' }}
-                          />
-                          <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>分钟</span>
-                        </div>
-                      </div>
-
-                      {/* Controls */}
-                      {canEditAgenda && (
-                        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }} onClick={e => e.stopPropagation()}>
-                          <button
-                            onClick={() => moveUp(idx)}
-                            disabled={idx === 0}
-                            title="上移"
-                            style={{ width: 26, height: 26, border: '1px solid var(--border)', borderRadius: 4, background: idx === 0 ? '#f8f9fb' : 'var(--card)', cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: 12, color: idx === 0 ? '#ccc' : 'var(--foreground)' }}
-                          >▲</button>
-                          <button
-                            onClick={() => moveDown(idx)}
-                            disabled={idx === meetingTopics.length - 1}
-                            title="下移"
-                            style={{ width: 26, height: 26, border: '1px solid var(--border)', borderRadius: 4, background: idx === meetingTopics.length - 1 ? '#f8f9fb' : 'var(--card)', cursor: idx === meetingTopics.length - 1 ? 'not-allowed' : 'pointer', fontSize: 12, color: idx === meetingTopics.length - 1 ? '#ccc' : 'var(--foreground)' }}
-                          >▼</button>
-                          <button
-                            onClick={() => removeTopic(mt.topicId)}
-                            disabled={t.status === '锁定中' || t.status === '已上会'}
-                            title={t.status === '锁定中' || t.status === '已上会' ? '已锁定/已上会不可移出' : '移除'}
-                            style={{
-                              width: 26, height: 26, border: '1px solid #fecaca', borderRadius: 4, background: '#fef2f2',
-                              cursor: (t.status === '锁定中' || t.status === '已上会') ? 'not-allowed' : 'pointer',
-                              fontSize: 12, color: '#dc2626',
-                              opacity: (t.status === '锁定中' || t.status === '已上会') ? 0.4 : 1,
-                            }}
-                          >✕</button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )
@@ -1996,14 +3092,13 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
               />
               <ActionTile
                 label="导出议程安排"
-                desc="按模板生成 PDF / Word 议程"
-                onClick={() => fireToast('议程已生成，正在下载…')}
+                desc="生成会议整体安排图（一张图）"
+                onClick={() => setShowAgendaOverview(true)}
               />
               <ActionTile
                 label="发送会议通知"
                 desc="群机器人、邮件、领导消息推送"
                 onClick={() => setShowNotifyModal(true)}
-                primary
               />
 
               {meeting.status === '筹备中' && (
@@ -2015,36 +3110,23 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
                   <Btn label="结束会议" variant="danger" onClick={endMeeting} />
                 </>
               )}
-              {onDelete && meeting.status === '筹备中' && (
-                <Btn
-                  label="删除本场会议"
-                  variant="danger"
-                  onClick={() => {
-                    if (!window.confirm(`确认删除会议「${meeting.title}」？`)) return
-                    onDelete()
-                  }}
-                />
-              )}
             </div>
           </Card>
 
-          {/* Attendees */}
-          <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>参会人员（{meeting.attendees.length}人）</div>
-            </div>
+          {/* Attendees — 默认折叠 */}
+          <CollapsibleSidebarCard title={`参会人员（${meeting.attendees.length}人）`}>
+            {meeting.attendees.length === 0 && <div style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>—</div>}
             {meeting.attendees.map((name, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i === meeting.attendees.length - 1 ? 0 : 9 }}>
                 <div style={{ width: 28, height: 28, borderRadius: '50%', background: ['#1b365d', '#3d4a6b', '#2f5d4a', '#8a5a2b', '#5c6578'][i % 5], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {name[0]}
                 </div>
                 <div style={{ fontSize: 13 }}>{name}</div>
               </div>
             ))}
-          </Card>
+          </CollapsibleSidebarCard>
 
-          <Card>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>列席 / 纪检 / 组织</div>
+          <CollapsibleSidebarCard title={`列席 / 纪检 / 组织（${meeting.observers.length + meeting.disciplineStaff.length + (meeting.organizer ? 1 : 0)}人）`}>
             <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 8 }}>会议组织人</div>
             <div style={{ fontSize: 13, marginBottom: 10 }}>{meeting.organizer || '—'}{meeting.organizeDept ? ` · ${meeting.organizeDept}` : ''}</div>
             <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 6 }}>列席人员（{meeting.observers.length}人）</div>
@@ -2057,36 +3139,8 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
             {meeting.disciplineStaff.map((name, i) => (
               <div key={i} style={{ fontSize: 13, marginBottom: 6 }}>{name}</div>
             ))}
-          </Card>
+          </CollapsibleSidebarCard>
 
-          {/* Time distribution */}
-          {meetingTopics.length > 0 && (
-            <Card>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>时间分配</div>
-              {meetingTopics.map((mt, i) => {
-                const t = topics.find(x => x.id === mt.topicId)!
-                const mins = mt.customMins ?? t.estimatedMins
-                const pct = (mins / totalMins) * 100
-                return (
-                  <div key={mt.topicId} style={{ marginBottom: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                      <span style={{ color: 'var(--muted-foreground)', maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {i + 1}. {t.title}
-                      </span>
-                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{mins}min</span>
-                    </div>
-                    <div style={{ background: '#f0f2f7', borderRadius: 3, height: 6 }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--primary)', borderRadius: 3, opacity: 1 - i * 0.15 }} />
-                    </div>
-                  </div>
-                )
-              })}
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: 'var(--muted-foreground)' }}>合计时长</span>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: 'var(--primary)' }}>{totalMins} 分钟</span>
-              </div>
-            </Card>
-          )}
         </div>
       </div>
     </div>
@@ -2117,12 +3171,14 @@ function AvatarRow({ names, max = 4 }: { names: string[]; max?: number }) {
 }
 
 // Meetings list for a specific type
-function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onDelete, onStart, onEnd, onNew, onNav }: {
+function MeetingTypeList({ typeId, meetings, topics, sessions = [], onBack, onDetail, onOpenSession, onDelete, onStart, onEnd, onNew, onNav }: {
   typeId: string
   meetings: Meeting[]
   topics: Topic[]
+  sessions?: MeetingSession[]
   onBack: () => void
   onDetail: (id: string) => void
+  onOpenSession?: (sessionId: string) => void
   onDelete?: (m: Meeting) => void
   onStart?: (m: Meeting) => void
   onEnd?: (m: Meeting) => void
@@ -2131,9 +3187,14 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onDelete,
 }) {
   const { meetingTypes } = useMeetingCatalog()
   const typeMeta = meetingTypes.find(t => t.id === typeId) ?? INIT_MEETING_TYPES.find(t => t.id === typeId)
+  const [month, setMonth] = useState(currentYearMonth)
   const typeMeetings = meetings.filter(m => m.typeId === typeId)
-  const statusOrder: MeetingStatus[] = ['进行中', '筹备中', '已结束']
-  const sorted = [...typeMeetings].sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status))
+  const filtered = month ? typeMeetings.filter(m => m.date.startsWith(month)) : typeMeetings
+  const sorted = [...filtered].sort((a, b) => {
+    const ka = `${a.date}T${a.time || '00:00'}`
+    const kb = `${b.date}T${b.time || '00:00'}`
+    return kb.localeCompare(ka) // 召开时间逆序
+  })
   if (!typeMeta) return <div className="empty">会议类型不存在</div>
 
   return (
@@ -2144,15 +3205,26 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onDelete,
         </button>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>{typeMeta.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{typeMeta.desc} · 共 {typeMeetings.length} 场会议</div>
+          <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+            {typeMeta.desc} · 共 {typeMeetings.length} 场会议
+            {month ? ` · 本筛选 ${sorted.length} 场` : ''}
+          </div>
         </div>
         <Btn label="+ 新建会议" variant="primary" onClick={onNew} />
       </div>
 
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>召开年月</span>
+        <MonthPicker value={month} onChange={setMonth} style={{ width: 160 }} />
+        <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted-foreground)' }}>
+          按召开时间逆序 · 显示 {sorted.length} 场
+        </div>
+      </div>
+
       {sorted.length === 0 && (
         <div className="empty">
-          暂无{typeMeta.name}记录
-          <div style={{ marginTop: 14 }}><Btn label="新建会议" variant="primary" onClick={onNew} /></div>
+          {month ? `${month} 暂无${typeMeta.name}记录` : `暂无${typeMeta.name}记录`}
+          {!month && <div style={{ marginTop: 14 }}><Btn label="新建会议" variant="primary" onClick={onNew} /></div>}
         </div>
       )}
 
@@ -2173,6 +3245,16 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onDelete,
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
                     <Badge label={m.status} color={meetingStatusColor[m.status]} />
                     <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{m.id}</span>
+                    {m.sessionId && (
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); onOpenSession?.(m.sessionId!) }}
+                        style={{ fontSize: 11, padding: '1px 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--secondary)', color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}
+                        title={sessions.find(s => s.id === m.sessionId)?.name}
+                      >
+                        组合 · {sessions.find(s => s.id === m.sessionId)?.name?.slice(0, 12) || m.sessionId}
+                      </button>
+                    )}
                   </div>
                   <div style={{ fontFamily: "'Noto Serif SC',serif", fontSize: 15, fontWeight: 700, marginBottom: 7 }}>{m.title}</div>
                   <div className="meta">
@@ -2236,29 +3318,889 @@ function MeetingTypeList({ typeId, meetings, topics, onBack, onDetail, onDelete,
   )
 }
 
-function MeetingsView({ topics, setTopics, meetings, setMeetings, onNav }: {
+
+function sessionDerivedStatus(session: MeetingSession, meetings: Meeting[]): MeetingStatus | '混合' {
+  const kids = session.meetingIds.map(id => meetings.find(m => m.id === id)).filter(Boolean) as Meeting[]
+  if (kids.length === 0) return '筹备中'
+  if (kids.every(m => m.status === '已结束')) return '已结束'
+  if (kids.some(m => m.status === '进行中')) return '进行中'
+  if (kids.every(m => m.status === '筹备中')) return '筹备中'
+  return '混合'
+}
+
+function uniqNames(list: string[]) {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const n of list) {
+    if (!n || seen.has(n)) continue
+    seen.add(n)
+    out.push(n)
+  }
+  return out
+}
+
+function NewSessionModal({ onClose, onSave, onUpdate, session = null, kidMeetings = [] }: {
+  onClose: () => void
+  onSave?: (payload: { session: MeetingSession; meetings: Meeting[] }) => void
+  onUpdate?: (payload: {
+    session: MeetingSession
+    shared: {
+      date: string; time: string; endTime: string; location: string
+      chair: string; organizer: string; organizeDept: string
+      attendees: string[]; observers: string[]; disciplineStaff: string[]
+    }
+  }) => void
+  session?: MeetingSession | null
+  kidMeetings?: Meeting[]
+}) {
+  const isEdit = !!session
+  const { meetingTypes } = useMeetingCatalog()
+  const { role, roles } = usePermission()
+  const enabledTypes = meetingTypes.filter(t => t.enabled && meetingTypeInRoleScope(t, role, roles))
+  const seedKid = kidMeetings[0]
+  const [name, setName] = useState(session?.name ?? '')
+  const [date, setDate] = useState(session?.date ?? '2026-09-12')
+  const [time, setTime] = useState(session?.time ?? '09:00')
+  const [endTime, setEndTime] = useState(session?.endTime ?? '12:30')
+  const [location, setLocation] = useState(session?.location ?? '总部大厦28层第一会议室')
+  const [chair, setChair] = useState(seedKid?.chair ?? '马总（集团总经理）')
+  const [organizer, setOrganizer] = useState(session?.organizer ?? '王总助')
+  const [organizeDept, setOrganizeDept] = useState(session?.organizeDept ?? '集团办公室')
+  const [attendees, setAttendees] = useState<string[]>(() => uniqNames(kidMeetings.flatMap(m => m.attendees)))
+  const [observers, setObservers] = useState<string[]>(() => uniqNames(kidMeetings.flatMap(m => m.observers)))
+  const [disciplineStaff, setDisciplineStaff] = useState<string[]>(() => uniqNames(kidMeetings.flatMap(m => m.disciplineStaff)))
+  const [typeIds, setTypeIds] = useState<string[]>(() => kidMeetings.map(m => m.typeId))
+  const [rosterSeeded, setRosterSeeded] = useState(isEdit)
+  const [showAttendeePicker, setShowAttendeePicker] = useState(false)
+
+  const selectedTypes = typeIds.map(id => enabledTypes.find(t => t.id === id)).filter(Boolean) as MeetingTypeDef[]
+
+  const toggleType = (id: string) => {
+    if (isEdit) return
+    setTypeIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+    setRosterSeeded(false)
+  }
+
+  useEffect(() => {
+    if (isEdit || rosterSeeded || typeIds.length === 0) return
+    const types = typeIds
+      .map(id => meetingTypes.find(t => t.id === id))
+      .filter((t): t is MeetingTypeDef => !!t && t.enabled)
+    if (types.length === 0) return
+    setAttendees(uniqNames(types.flatMap(t => t.usualAttendees)))
+    setObservers(uniqNames(types.flatMap(t => t.usualObservers)))
+    setDisciplineStaff(uniqNames(types.flatMap(t => t.usualDiscipline)))
+    const first = types[0]
+    if (first.usualChair) setChair(first.usualChair)
+    if (first.usualLocation) setLocation(first.usualLocation)
+    if (first.usualOrganizer) setOrganizer(first.usualOrganizer)
+    if (first.usualOrganizeDept) setOrganizeDept(first.usualOrganizeDept)
+    setRosterSeeded(true)
+  }, [typeIds, rosterSeeded, meetingTypes, isEdit])
+
+  const autoName = () => {
+    const labels = typeIds.map(id => enabledTypes.find(t => t.id === id)?.name.replace(/^广汽集团|^广汽/, '') || id)
+    const short = labels.map(n => n.replace(/会议$/, '').slice(0, 6)).join('+')
+    const md = date.slice(5).replace('-', '·')
+    return `${md} ${short}连开`
+  }
+
+  const canSave = isEdit
+    ? !!date && !!(name.trim() || session?.name)
+    : typeIds.length >= 2 && !!date && !!(name.trim() || autoName())
+
+  const handleSave = () => {
+    const sessionName = name.trim() || (isEdit ? session!.name : autoName())
+    const shared = {
+      date, time, endTime, location, chair, organizer, organizeDept,
+      attendees: [...attendees], observers: [...observers], disciplineStaff: [...disciplineStaff],
+    }
+    if (isEdit && session && onUpdate) {
+      onUpdate({
+        session: {
+          ...session,
+          name: sessionName,
+          date, time, endTime, location, organizer, organizeDept,
+          notes: session.notes,
+        },
+        shared,
+      })
+      onClose()
+      return
+    }
+    const sid = `S${date.replace(/-/g, '')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+    const meetings = typeIds.map(tid => {
+      const t = enabledTypes.find(x => x.id === tid)!
+      const mid = `M${date.replace(/-/g, '').slice(0, 6)}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`
+      return {
+        id: mid,
+        title: `${date.slice(0, 7)} ${t.name}`,
+        typeId: tid,
+        date, time, endTime, location, chair,
+        attendees: [...attendees],
+        observers: [...observers],
+        disciplineStaff: [...disciplineStaff],
+        organizer, organizeDept,
+        meetingTopics: [],
+        status: '筹备中' as MeetingStatus,
+        notes: '',
+        sessionId: sid,
+      }
+    })
+    onSave?.({
+      session: {
+        id: sid, name: sessionName, date, time, endTime, location, organizer, organizeDept,
+        meetingIds: meetings.map(m => m.id),
+        notes: '组合创建；共同参会人/列席/纪检写入各子会；会前通知按组合一次推送。',
+      },
+      meetings,
+    })
+    onClose()
+  }
+
+  return (
+    <ModalShell
+      title={isEdit ? '编辑组合会议' : '新建组合会议'}
+      kicker={isEdit ? '会期信息 · 共同参会同步各子会' : '会期 Session · 共同参会 · 一次创建多场'}
+      width={720}
+      onClose={onClose}
+      footer={
+        <ModalFoot>
+          <Btn label="取消" variant="ghost" onClick={onClose} />
+          <Btn label={isEdit ? '保存修改' : '创建组合并生成多场会议'} variant="primary" disabled={!canSave} onClick={handleSave} />
+        </ModalFoot>
+      }
+    >
+      <div className="field-note" style={{ marginBottom: 12 }}>
+        {isEdit
+          ? '修改会期信息与共同人员后，将同步到各子会（子会类型不可在此增减；议程仍分场编排）。'
+          : <>勾选 ≥2 个会议类型后，下列人员与地点为<strong>各子会共同字段</strong>（写入每一场）；子会类型各自不同，议程仍分别编排。</>}
+      </div>
+      <Field label="组合名称">
+        <input className="field-input" value={name} onChange={e => setName(e.target.value)} placeholder={typeIds.length >= 2 ? `默认：${autoName()}` : '如：9·12 总办会+党委会连开'} />
+      </Field>
+      <Field label="包含会议类型" required={!isEdit}>
+        <div className="choice-grid">
+          {enabledTypes.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              className={`choice${typeIds.includes(t.id) ? ' is-on' : ''}`}
+              onClick={() => toggleType(t.id)}
+              disabled={isEdit}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+        <div className="field-note">{isEdit ? '编辑时不可增减子会类型' : `已选 ${typeIds.length} 个（至少 2 个）`}</div>
+      </Field>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 12 }}>
+        <Field label="召开日期" required>
+          <input className="field-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+        </Field>
+        <Field label="开始时间">
+          <input className="field-input" type="time" value={time} onChange={e => setTime(e.target.value)} />
+        </Field>
+        <Field label="结束时间">
+          <input className="field-input" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+        </Field>
+      </div>
+      <Field label="会议地点">
+        <input className="field-input" value={location} onChange={e => setLocation(e.target.value)} placeholder="如：总部大厦28层第一会议室" />
+      </Field>
+      <PersonField label="主持人（共同）" value={chair} onChange={setChair} placeholder="点击选择主持人" note="写入各子会；若某子会需不同主持，可进该场详情再改" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <PersonField
+          label="会议组织人"
+          value={organizer}
+          onChange={n => {
+            setOrganizer(n)
+            const p = findPerson(n)
+            if (p && MEETING_ORG_DEPTS.includes(p.dept)) setOrganizeDept(p.dept)
+          }}
+          placeholder="点击选择组织人"
+        />
+        <Field label="组织部门">
+          <select className="field-select" value={organizeDept} onChange={e => setOrganizeDept(e.target.value)}>
+            {MEETING_ORG_DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </Field>
+      </div>
+
+      <Field label={`参会人员（共同 · ${attendees.length}人）`}>
+        {!isEdit && selectedTypes.length > 0 && (
+          <div style={{ fontSize: 12, color: '#2f5d4a', marginBottom: 8 }}>
+            已按所选类型常见人员去重合并带入，可继续增删；创建后写入每一场子会
+          </div>
+        )}
+        {attendees.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, padding: 10, background: 'var(--muted)', borderRadius: 6 }}>
+            {attendees.map(a => {
+              const p = findPerson(a)
+              return (
+                <span key={a} title={personLabel(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#fff', border: '1px solid var(--border)', borderRadius: 4, fontSize: 12 }}>
+                  {a}{p ? <span style={{ color: 'var(--muted-foreground)' }}>·{p.dept}</span> : null}
+                  <button type="button" onClick={() => setAttendees(prev => prev.filter(x => x !== a))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
+                </span>
+              )
+            })}
+            <button type="button" onClick={() => setAttendees([])} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}>清空</button>
+          </div>
+        )}
+        <Btn label="选择参会人员" variant="secondary" onClick={() => setShowAttendeePicker(true)} />
+      </Field>
+
+      <NameChipField
+        label="列席人员（共同）"
+        names={observers}
+        onChange={setObservers}
+        placeholder="选择列席人员"
+      />
+      <NameChipField
+        label="纪检部门人员（共同）"
+        names={disciplineStaff}
+        onChange={setDisciplineStaff}
+        placeholder="选择纪检人员"
+      />
+      {showAttendeePicker && (
+        <PersonPickerModal
+          title="选择参会人员（共同）"
+          multiple
+          selected={attendees}
+          onClose={() => setShowAttendeePicker(false)}
+          onConfirm={names => { setAttendees(names); setShowAttendeePicker(false) }}
+        />
+      )}
+    </ModalShell>
+  )
+}
+
+/** 单场议程编排（添加/排序/时长/移除），可嵌在组合详情内复用 */
+function MeetingAgendaPanel({
+  meeting, topics, setTopics, onUpdate, onToast,
+}: {
+  meeting: Meeting
+  topics: Topic[]
+  setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
+  onUpdate: (m: Meeting) => void
+  onToast?: (msg: string) => void
+}) {
+  const [showPicker, setShowPicker] = useState(false)
+  const [detailTopic, setDetailTopic] = useState<Topic | null>(null)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [overIdx, setOverIdx] = useState<number | null>(null)
+  const meetingTopics = [...meeting.meetingTopics].sort((a, b) => a.order - b.order)
+  const canEditAgenda = meeting.status === '筹备中'
+  const toast = (msg: string) => onToast?.(msg)
+
+  const totalMins = meetingTopics.reduce((s, mt) => {
+    const t = topics.find(x => x.id === mt.topicId)
+    return s + (mt.customMins ?? t?.estimatedMins ?? 0)
+  }, 0)
+
+  const startMins = (() => {
+    const [h, m] = meeting.time.split(':').map(Number)
+    return (h || 0) * 60 + (m || 0)
+  })()
+
+  const getTime = (offset: number) => {
+    const t = startMins + offset
+    return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
+  }
+
+  const removeTopic = (topicId: string) => {
+    const topic = topics.find(t => t.id === topicId)
+    if (topic && (topic.status === '锁定中' || topic.status === '已上会')) {
+      toast(topic.status === '已上会' ? '已上会议题不可移出议程' : '议题已锁定，不可移出议程')
+      return
+    }
+    onUpdate({
+      ...meeting,
+      meetingTopics: meeting.meetingTopics
+        .filter(mt => mt.topicId !== topicId)
+        .map((mt, i) => ({ ...mt, order: i + 1 })),
+    })
+    setTopics(prev => prev.map(t => {
+      if (t.id !== topicId) return t
+      if (t.status === '已安排') return { ...t, status: '待安排' }
+      return t
+    }))
+  }
+
+  const reorderAgenda = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= meetingTopics.length || to >= meetingTopics.length) return
+    const arr = [...meetingTopics]
+    const [item] = arr.splice(from, 1)
+    arr.splice(to, 0, item)
+    onUpdate({ ...meeting, meetingTopics: arr.map((x, i) => ({ ...x, order: i + 1 })) })
+  }
+
+  const updateMins = (topicId: string, mins: number) => {
+    const v = Math.max(5, Math.min(120, Number(mins) || 5))
+    onUpdate({
+      ...meeting,
+      meetingTopics: meeting.meetingTopics.map(mt =>
+        mt.topicId === topicId ? { ...mt, customMins: v } : mt
+      ),
+    })
+  }
+
+  const addTopics = (topicIds: string[]) => {
+    if (topicIds.length === 0) return
+    const existing = new Set(meeting.meetingTopics.map(mt => mt.topicId))
+    const toAdd = topicIds.filter(id => !existing.has(id))
+    if (toAdd.length === 0) return
+    let order = meeting.meetingTopics.length
+    onUpdate({
+      ...meeting,
+      meetingTopics: [
+        ...meeting.meetingTopics,
+        ...toAdd.map(topicId => ({ topicId, order: ++order })),
+      ],
+    })
+    setTopics(prev => prev.map(t => toAdd.includes(t.id) && t.status === '待安排' ? { ...t, status: '已安排' } : t))
+    setShowPicker(false)
+    toast(`已添加 ${toAdd.length} 项议题到本场`)
+  }
+
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+      {showPicker && (
+        <TopicPickerModal
+          topics={topics}
+          alreadyPicked={meetingTopics.map(mt => mt.topicId)}
+          meetingTypeId={meeting.typeId}
+          onClose={() => setShowPicker(false)}
+          onAdd={addTopics}
+        />
+      )}
+      {detailTopic && (
+        <TopicFormModal
+          topic={topics.find(t => t.id === detailTopic.id) ?? detailTopic}
+          existingTopics={topics}
+          onClose={() => setDetailTopic(null)}
+          onSave={saved => setTopics(prev => prev.map(t => t.id === saved.id ? saved : t))}
+        />
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--secondary)', borderBottom: '1px solid var(--border)', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>本场议题安排</span>
+          <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+            共 {meetingTopics.length} 项 · 合计 {totalMins} 分钟
+            {canEditAgenda && meetingTopics.length > 1 ? ' · 可拖拽排序' : ''}
+          </span>
+        </div>
+        {canEditAgenda && (
+          <Btn label="+ 添加议题" variant="primary" small onClick={() => setShowPicker(true)} />
+        )}
+      </div>
+
+        {meetingTopics.length === 0 ? (
+          <div style={{ padding: '28px 18px', textAlign: 'center', fontSize: 13, color: 'var(--muted-foreground)' }}>
+            {canEditAgenda ? '暂未安排议题' : meeting.status === '进行中' ? '会议进行中，不可再增加议题' : '暂无议题'}
+            {canEditAgenda && <div style={{ marginTop: 6 }}>点击右上角「添加议题」，从待安排议题中勾选本场内容</div>}
+          </div>
+        ) : (
+        (() => {
+          let elapsed = 0
+          return meetingTopics.map((mt, idx) => {
+            const t = topics.find(x => x.id === mt.topicId)
+            if (!t) return null
+            const mins = mt.customMins ?? t.estimatedMins
+            const topicStart = elapsed
+            elapsed += mins
+            const dragging = dragIdx === idx
+            const dragOver = overIdx === idx && dragIdx !== null && dragIdx !== idx
+            return (
+              <div
+                key={mt.topicId}
+                draggable={canEditAgenda}
+                onDragStart={e => {
+                  if (!canEditAgenda) return
+                  setDragIdx(idx)
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData('text/plain', String(idx))
+                }}
+                onDragOver={e => {
+                  if (!canEditAgenda || dragIdx === null) return
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                  if (overIdx !== idx) setOverIdx(idx)
+                }}
+                onDrop={e => {
+                  e.preventDefault()
+                  const from = dragIdx ?? Number(e.dataTransfer.getData('text/plain'))
+                  reorderAgenda(from, idx)
+                  setDragIdx(null)
+                  setOverIdx(null)
+                }}
+                onDragEnd={() => { setDragIdx(null); setOverIdx(null) }}
+                style={{
+                  borderBottom: idx < meetingTopics.length - 1 ? '1px solid var(--border)' : 'none',
+                  padding: '14px 16px',
+                  cursor: canEditAgenda ? 'grab' : 'pointer',
+                  opacity: dragging ? 0.55 : 1,
+                  background: dragOver ? 'var(--secondary)' : 'transparent',
+                  boxShadow: dragOver ? 'inset 0 2px 0 var(--primary)' : 'none',
+                }}
+                onClick={() => setDetailTopic(t)}
+              >
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  {canEditAgenda && (
+                    <div
+                      title="拖拽调整顺序"
+                      onClick={e => e.stopPropagation()}
+                      style={{ width: 16, marginTop: 6, color: 'var(--muted-foreground)', cursor: 'grab', flexShrink: 0, letterSpacing: -1, userSelect: 'none', fontSize: 14, lineHeight: 1 }}
+                    >
+                      ⋮⋮
+                    </div>
+                  )}
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                    {idx + 1}
+                  </div>
+                  <div style={{ width: 78, flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: 'var(--primary)' }}>{getTime(topicStart)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2 }}>至 {getTime(topicStart + mins)}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3 }}>{t.title}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>汇报人：{t.presenter} · {t.dept}</div>
+                      </div>
+                      <div
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <input
+                          type="number"
+                          min={5}
+                          max={120}
+                          value={mins}
+                          onChange={e => updateMins(mt.topicId, Number(e.target.value))}
+                          disabled={!canEditAgenda}
+                          style={{ width: 50, padding: '4px 6px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 13, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center', fontWeight: 600, background: '#fafbfd' }}
+                        />
+                        <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>分</span>
+                        {canEditAgenda && (
+                          <button
+                            type="button"
+                            onClick={() => removeTopic(mt.topicId)}
+                            disabled={t.status === '锁定中' || t.status === '已上会'}
+                            title={t.status === '锁定中' || t.status === '已上会' ? '已锁定/已上会不可移出' : '移除'}
+                            style={{
+                              width: 28, height: 28, border: '1px solid #fecaca', borderRadius: 4, background: '#fef2f2',
+                              cursor: (t.status === '锁定中' || t.status === '已上会') ? 'not-allowed' : 'pointer',
+                              fontSize: 12, color: '#dc2626',
+                              opacity: (t.status === '锁定中' || t.status === '已上会') ? 0.4 : 1,
+                            }}
+                          >✕</button>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {t.outcomes?.[0]?.conclusion || t.aiSummary || t.background || '暂无议题摘要'}
+                    </div>
+                    {t.outcomes?.[0] && (
+                      <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 6 }}>点击查看审议结论与对应纪要</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })
+        })()
+      )}
+
+      {meetingTopics.length > 0 && (
+        <div style={{ padding: '10px 16px', background: '#f8f9fb', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+            议程结束：<strong style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>{getTime(totalMins)}</strong>
+          </div>
+          {totalMins > 180 && <span style={{ fontSize: 12, color: '#8b3a3a' }}>超过 3 小时，建议精简议程</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SessionDetailView({
+  session, meetings, topics, setTopics, setMeetings, setSessions, onBack, onOpenMeeting, onNav, onToast,
+}: {
+  session: MeetingSession
+  meetings: Meeting[]
+  topics: Topic[]
+  setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
+  setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>
+  setSessions: React.Dispatch<React.SetStateAction<MeetingSession[]>>
+  onBack: () => void
+  onOpenMeeting: (id: string) => void
+  onNav: (s: NavSection, meetingId?: string) => void
+  onToast: (msg: string) => void
+}) {
+  const { meetingTypes } = useMeetingCatalog()
+  const kids = session.meetingIds.map(id => meetings.find(m => m.id === id)).filter(Boolean) as Meeting[]
+  const status = sessionDerivedStatus(session, meetings)
+  const [tab, setTab] = useState(kids[0]?.id ?? '')
+  const [showEdit, setShowEdit] = useState(false)
+  const [showNotify, setShowNotify] = useState(false)
+  const [showAgendaOverview, setShowAgendaOverview] = useState(false)
+
+  useEffect(() => {
+    if (!tab && kids[0]) setTab(kids[0].id)
+    else if (tab && kids.length && !kids.some(k => k.id === tab)) setTab(kids[0]?.id ?? '')
+  }, [kids, tab])
+
+  const active = kids.find(m => m.id === tab) ?? kids[0]
+  const sharedAttendees = uniqNames(kids.flatMap(m => m.attendees))
+  const sharedObservers = uniqNames(kids.flatMap(m => m.observers))
+  const sharedDiscipline = uniqNames(kids.flatMap(m => m.disciplineStaff))
+  const sharedChair = kids[0]?.chair || ''
+  const canDelete = kids.length > 0 && kids.every(m => m.status === '筹备中')
+  const canStart = kids.some(m => m.status === '筹备中')
+  const canEnd = kids.some(m => m.status === '进行中')
+  const liveKid = kids.find(m => m.status === '进行中')
+
+  const notifyProxy: Meeting = {
+    id: session.id,
+    title: session.name,
+    typeId: kids[0]?.typeId || 'gac-gm-office',
+    date: session.date,
+    time: session.time,
+    endTime: session.endTime,
+    location: session.location,
+    chair: sharedChair,
+    attendees: sharedAttendees,
+    observers: sharedObservers,
+    disciplineStaff: sharedDiscipline,
+    organizer: session.organizer,
+    organizeDept: session.organizeDept,
+    meetingTopics: [],
+    status: status === '混合' ? '筹备中' : status,
+    notes: session.notes || '',
+    sessionId: session.id,
+  }
+
+  const updateKid = (updated: Meeting) => {
+    setMeetings(prev => prev.map(m => m.id === updated.id ? updated : m))
+  }
+
+  const startAll = () => {
+    const targets = kids.filter(m => m.status === '筹备中')
+    if (targets.length === 0) { onToast('没有可开始的筹备中子会'); return }
+    setMeetings(prev => prev.map(m => targets.some(t => t.id === m.id) ? { ...m, status: '进行中' } : m))
+    setTopics(prev => prev.map(t => {
+      const hit = targets.some(m => m.meetingTopics.some(mt => mt.topicId === t.id))
+      return hit && (t.status === '已安排' || t.status === '待安排') ? { ...t, status: '锁定中' } : t
+    }))
+    onToast(`组合已开始：${targets.length} 场子会进入进行中`)
+    const first = targets[0]
+    if (first) onNav('meeting-live', first.id)
+  }
+
+  const endAll = () => {
+    const targets = kids.filter(m => m.status === '进行中')
+    if (targets.length === 0) { onToast('没有进行中的子会可结束'); return }
+    if (!window.confirm(`确认结束组合「${session.name}」中的 ${targets.length} 场进行中子会？相关议题将标记为已上会。`)) return
+    setMeetings(prev => prev.map(m => targets.some(t => t.id === m.id) ? { ...m, status: '已结束' } : m))
+    setTopics(prev => prev.map(t =>
+      targets.some(m => m.meetingTopics.some(mt => mt.topicId === t.id)) ? { ...t, status: '已上会' } : t
+    ))
+    onToast(`已结束 ${targets.length} 场子会，议题已标记为已上会`)
+  }
+
+  const deleteSession = () => {
+    if (!canDelete) {
+      onToast('仅全部子会为「筹备中」时可删除组合')
+      return
+    }
+    if (!window.confirm(`确认删除组合「${session.name}」及全部 ${kids.length} 场子会？`)) return
+    const kidIds = new Set(kids.map(k => k.id))
+    const remaining = meetings.filter(m => !kidIds.has(m.id))
+    const deletedTopicIds = new Set(kids.flatMap(m => m.meetingTopics.map(mt => mt.topicId)))
+    setTopics(prev => prev.map(t => {
+      if (!deletedTopicIds.has(t.id)) return t
+      const still = remaining.some(m => m.meetingTopics.some(mt => mt.topicId === t.id))
+      if (still) return t
+      if (t.status === '已安排' || t.status === '锁定中') return { ...t, status: '待安排' }
+      return t
+    }))
+    setMeetings(prev => prev.filter(m => !kidIds.has(m.id)))
+    setSessions(prev => prev.filter(s => s.id !== session.id))
+    onToast('组合及子会已删除')
+    onBack()
+  }
+
+  const applyEdit = (payload: {
+    session: MeetingSession
+    shared: {
+      date: string; time: string; endTime: string; location: string
+      chair: string; organizer: string; organizeDept: string
+      attendees: string[]; observers: string[]; disciplineStaff: string[]
+    }
+  }) => {
+    const { session: next, shared } = payload
+    setSessions(prev => prev.map(s => s.id === next.id ? next : s))
+    const kidIds = new Set(session.meetingIds)
+    setMeetings(prev => prev.map(m => {
+      if (!kidIds.has(m.id)) return m
+      return {
+        ...m,
+        date: shared.date,
+        time: shared.time,
+        endTime: shared.endTime,
+        location: shared.location,
+        chair: shared.chair,
+        organizer: shared.organizer,
+        organizeDept: shared.organizeDept,
+        attendees: [...shared.attendees],
+        observers: [...shared.observers],
+        disciplineStaff: [...shared.disciplineStaff],
+      }
+    }))
+    onToast('组合信息已保存，并已同步到各子会')
+  }
+
+  return (
+    <div>
+      {showEdit && (
+        <NewSessionModal
+          session={session}
+          kidMeetings={kids}
+          onClose={() => setShowEdit(false)}
+          onUpdate={applyEdit}
+        />
+      )}
+      {showNotify && (
+        <NotifyModal
+          meeting={notifyProxy}
+          onClose={() => setShowNotify(false)}
+          onSend={(channels, leaders) => {
+            setShowNotify(false)
+            const parts = []
+            if (channels.includes('robot')) parts.push('群机器人')
+            if (channels.includes('email')) parts.push('邮件')
+            if (channels.includes('leader') && leaders.length > 0) parts.push(`领导推送（${leaders.join('、')}）`)
+            onToast(`组合通知已发送（1 份）：${parts.join('、')}`)
+          }}
+        />
+      )}
+
+      {showAgendaOverview && (
+        <AgendaOverviewModal
+          title={session.name}
+          meta={[
+            `${session.date} ${session.time}–${session.endTime}`,
+            session.location,
+            sharedChair ? `共同主持 ${sharedChair}` : '',
+            session.organizer ? `组织 ${session.organizer}` : '',
+          ].filter(Boolean)}
+          blocks={buildAgendaBlocks(kids, topics, id => meetingTypes.find(t => t.id === id)?.name || '')}
+          fileBase={session.name.replace(/[\\/:*?"<>|]/g, '_')}
+          onClose={() => setShowAgendaOverview(false)}
+          onDownloaded={() => onToast('组合整体安排图已下载')}
+        />
+      )}
+
+      {/* Breadcrumb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13, color: 'var(--muted-foreground)' }}>
+        <span style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: 500 }} onClick={onBack}>← 组合会期</span>
+        <span>›</span>
+        <span style={{ color: 'var(--foreground)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.name}</span>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+          {status !== '已结束' && (
+            <Btn label="编辑组合" variant="secondary" small onClick={() => setShowEdit(true)} />
+          )}
+          {canDelete && (
+            <Btn label="删除组合" variant="danger" small onClick={deleteSession} />
+          )}
+        </div>
+      </div>
+
+      {/* Session banner — 对齐单场会议头部 */}
+      <div style={{ background: 'var(--primary)', color: '#fff', borderRadius: 'var(--radius)', padding: '22px 28px', marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', right: -10, top: -20, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+        <div style={{ position: 'absolute', right: 80, bottom: -40, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, position: 'relative' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, opacity: 0.65, letterSpacing: '0.08em', fontFamily: 'JetBrains Mono,monospace' }}>{session.id}</span>
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.2)' }}>组合会期</span>
+              <span style={{ fontSize: 11, opacity: 0.75 }}>{kids.length} 场子会</span>
+            </div>
+            <div style={{ fontFamily: "'Noto Serif SC',serif", fontSize: 20, fontWeight: 700, marginBottom: 12, lineHeight: 1.35 }}>{session.name}</div>
+            <div className="meta" style={{ opacity: 0.92 }}>
+              <span>{session.date} {session.time}–{session.endTime}</span>
+              <span>{session.location}</span>
+              {session.organizer && <span>组织 {session.organizer}（{session.organizeDept}）</span>}
+            </div>
+          </div>
+          <Badge label={status} color={status === '进行中' ? meetingStatusColor['进行中'] : status === '已结束' ? meetingStatusColor['已结束'] : meetingStatusColor['筹备中']} />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }}>
+        <div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            {kids.map(m => {
+              const typeMeta = meetingTypes.find(t => t.id === m.typeId)
+              const on = active?.id === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setTab(m.id)}
+                  style={{
+                    padding: '10px 16px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                    border: on ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                    background: on ? 'var(--secondary)' : 'var(--card)',
+                    minWidth: 160,
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: on ? 'var(--primary)' : 'var(--foreground)' }}>{typeMeta?.name || m.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 3 }}>{m.status} · {m.meetingTopics.length} 议题</div>
+                </button>
+              )
+            })}
+          </div>
+
+          {active && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>{active.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4 }}>
+                    {meetingTypes.find(t => t.id === active.typeId)?.name} · {active.date} {active.time}–{active.endTime} · 主持 {active.chair}
+                  </div>
+                </div>
+                <Btn label="单场详情" variant="ghost" small onClick={() => onOpenMeeting(active.id)} />
+              </div>
+              <MeetingAgendaPanel
+                meeting={active}
+                topics={topics}
+                setTopics={setTopics}
+                onUpdate={updateKid}
+                onToast={onToast}
+              />
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, fontFamily: "'Noto Serif SC',serif" }}>组合操作</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <ActionTile
+                label="创建钉钉日程"
+                desc="按组合时段向共同参会人发日历邀请"
+                onClick={() => onToast('钉钉日程已按组合创建，共同参会人各收到 1 份邀请')}
+              />
+              <ActionTile
+                label="一键拉群"
+                desc="建群并拉入共同参会人，便于连开通知"
+                onClick={() => onToast('已创建组合群聊并拉入共同参会人员')}
+              />
+              <ActionTile
+                label="导出议程安排"
+                desc="生成组合整体安排图（一张图）"
+                onClick={() => setShowAgendaOverview(true)}
+              />
+              <ActionTile
+                label="发送组合通知"
+                desc="群机器人、邮件、领导推送（整组合 1 份）"
+                onClick={() => setShowNotify(true)}
+              />
+              {canStart && (
+                <Btn label="开始组合会议" variant="primary" onClick={startAll} />
+              )}
+              {liveKid && (
+                <Btn label="进入会中管控" variant="primary" onClick={() => onNav('meeting-live', liveKid.id)} />
+              )}
+              {canEnd && (
+                <Btn label="结束组合会议" variant="danger" onClick={endAll} />
+              )}
+            </div>
+          </Card>
+
+          <CollapsibleSidebarCard title={`共同参会（${sharedAttendees.length}人）`}>
+            {sharedAttendees.length === 0 && <div style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>—</div>}
+            {sharedAttendees.map((name, i) => (
+              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i === sharedAttendees.length - 1 ? 0 : 9 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: ['#1b365d', '#3d4a6b', '#2f5d4a', '#8a5a2b', '#5c6578'][i % 5], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {name[0]}
+                </div>
+                <div style={{ fontSize: 13 }}>{name}</div>
+              </div>
+            ))}
+          </CollapsibleSidebarCard>
+
+          <CollapsibleSidebarCard title={`列席 / 纪检 / 组织（${sharedObservers.length + sharedDiscipline.length + (session.organizer ? 1 : 0)}人）`}>
+            <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 8 }}>会议组织人</div>
+            <div style={{ fontSize: 13, marginBottom: 10 }}>{session.organizer || '—'}{session.organizeDept ? ` · ${session.organizeDept}` : ''}</div>
+            <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginBottom: 6 }}>列席（{sharedObservers.length}人）</div>
+            {sharedObservers.length === 0 && <div style={{ fontSize: 13, color: 'var(--muted-foreground)', marginBottom: 10 }}>—</div>}
+            {sharedObservers.map(name => (
+              <div key={name} style={{ fontSize: 13, marginBottom: 6 }}>{name}</div>
+            ))}
+            <div style={{ fontSize: 12, color: 'var(--muted-foreground)', margin: '10px 0 6px' }}>纪检（{sharedDiscipline.length}人）</div>
+            {sharedDiscipline.length === 0 && <div style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>—</div>}
+            {sharedDiscipline.map(name => (
+              <div key={name} style={{ fontSize: 13, marginBottom: 6 }}>{name}</div>
+            ))}
+          </CollapsibleSidebarCard>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MeetingsView({ topics, setTopics, meetings, setMeetings, sessions, setSessions, onNav }: {
   topics: Topic[]
   setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
   meetings: Meeting[]
   setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>
+  sessions: MeetingSession[]
+  setSessions: React.Dispatch<React.SetStateAction<MeetingSession[]>>
   onNav: (s: NavSection, meetingId?: string) => void
 }) {
   const { meetingTypes } = useMeetingCatalog()
   const { role, roles } = usePermission()
   const gridTypes = meetingTypes.filter(t => t.enabled && meetingTypeInRoleScope(t, role, roles))
   const [showNew, setShowNew] = useState(false)
+  const [showNewSession, setShowNewSession] = useState(false)
+  const [homeTab, setHomeTab] = useState<'single' | 'combo'>('single')
+  const [sessionMonth, setSessionMonth] = useState(currentYearMonth)
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [toast, setToast] = useState('')
 
   const scopedMeetings = meetings.filter(m => meetingInRoleScope(m, role, meetingTypes, roles))
+  const scopedSessions = sessions
+    .filter(s => s.meetingIds.some(id => scopedMeetings.some(m => m.id === id)))
+    .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`))
+  const filteredSessions = sessionMonth
+    ? scopedSessions.filter(s => s.date.startsWith(sessionMonth))
+    : scopedSessions
 
   const detailMeeting = scopedMeetings.find(m => m.id === detailId) ?? null
+  const selectedSession = sessions.find(s => s.id === selectedSessionId) ?? null
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
+
   const updateMeeting = (updated: Meeting) => setMeetings(prev => prev.map(m => m.id === updated.id ? updated : m))
   const addMeeting = (m: Meeting) => setMeetings(prev => [m, ...prev])
   const deleteMeeting = (m: Meeting) => {
     if (m.status !== '筹备中') return
     setTopics(prev => releaseTopicsAfterMeetingDelete(prev, meetings, m))
     setMeetings(prev => prev.filter(x => x.id !== m.id))
+    if (m.sessionId) {
+      setSessions(prev => prev.map(s => s.id !== m.sessionId ? s : {
+        ...s,
+        meetingIds: s.meetingIds.filter(id => id !== m.id),
+      }).filter(s => s.meetingIds.length > 0))
+    }
     if (detailId === m.id) setDetailId(null)
   }
   const startMeeting = (m: Meeting) => {
@@ -2283,11 +4225,34 @@ function MeetingsView({ topics, setTopics, meetings, setMeetings, onNav }: {
         meeting={detailMeeting}
         topics={topics}
         setTopics={setTopics}
-        onBack={() => setDetailId(null)}
+        onBack={() => {
+          setDetailId(null)
+          if (detailMeeting.sessionId) setSelectedSessionId(detailMeeting.sessionId)
+        }}
         onUpdate={updateMeeting}
         onDelete={() => deleteMeeting(detailMeeting)}
         onNav={onNav}
       />
+    )
+  }
+
+  if (selectedSession) {
+    return (
+      <>
+        {toast && <div className="toast">{toast}</div>}
+        <SessionDetailView
+          session={selectedSession}
+          meetings={meetings}
+          topics={topics}
+          setTopics={setTopics}
+          setMeetings={setMeetings}
+          setSessions={setSessions}
+          onBack={() => setSelectedSessionId(null)}
+          onOpenMeeting={id => { setSelectedSessionId(null); setDetailId(id) }}
+          onNav={onNav}
+          onToast={showToast}
+        />
+      </>
     )
   }
 
@@ -2305,8 +4270,10 @@ function MeetingsView({ topics, setTopics, meetings, setMeetings, onNav }: {
           typeId={selectedTypeId}
           meetings={scopedMeetings}
           topics={topics}
+          sessions={sessions}
           onBack={() => setSelectedTypeId(null)}
           onDetail={id => setDetailId(id)}
+          onOpenSession={id => setSelectedSessionId(id)}
           onDelete={deleteMeeting}
           onStart={startMeeting}
           onEnd={endMeeting}
@@ -2317,67 +4284,191 @@ function MeetingsView({ topics, setTopics, meetings, setMeetings, onNav }: {
     )
   }
 
-  // ── Type grid (entry screen) ──
+  // ── Home: tabs 单次 | 组合 ──
   return (
     <div>
       {showNew && <NewMeetingModal onClose={() => setShowNew(false)} onSave={addMeeting} />}
+      {showNewSession && (
+        <NewSessionModal
+          onClose={() => setShowNewSession(false)}
+          onSave={({ session, meetings: created }) => {
+            setSessions(prev => [session, ...prev])
+            setMeetings(prev => [...created, ...prev])
+            showToast(`已创建组合「${session.name}」，生成 ${created.length} 场会议；可发组合通知并分别编排议程。`)
+            setHomeTab('combo')
+            setSelectedSessionId(session.id)
+          }}
+        />
+      )}
+      {toast && <div className="toast">{toast}</div>}
 
       <SectionHeader
         title="会议管理"
-        subtitle="请选择会议模块，点击模块进入对应会议的管理"
-        action={<Btn label="+ 新建会议" variant="primary" onClick={() => setShowNew(true)} />}
+        subtitle={homeTab === 'single'
+          ? '按会议类型进入单场会议；类型入口固定，不随组合增多'
+          : '组合会期：同日连开多场；与类型字典分开管理'}
+        action={
+          homeTab === 'single'
+            ? <Btn label="+ 新建会议" variant="primary" onClick={() => setShowNew(true)} />
+            : <Btn label="+ 新建组合会议" variant="primary" onClick={() => setShowNewSession(true)} />
+        }
       />
 
-      <div className="type-grid">
-        {gridTypes.map((type, i) => {
-          const typeMeetings = scopedMeetings.filter(m => m.typeId === type.id)
-          const statusOrder: MeetingStatus[] = ['进行中', '筹备中', '已结束']
-          const latest = [...typeMeetings].sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status))[0]
-          const allAttendees = latest?.attendees ?? []
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+        {([
+          { id: 'single' as const, label: '单次会议', count: scopedMeetings.length },
+          { id: 'combo' as const, label: '组合会期', count: scopedSessions.length },
+        ]).map(t => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setHomeTab(t.id)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit',
+              border: homeTab === t.id ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+              background: homeTab === t.id ? 'var(--secondary)' : 'var(--card)',
+              color: homeTab === t.id ? 'var(--primary)' : 'var(--muted-foreground)',
+            }}
+          >
+            {t.label}
+            <span style={{
+              fontSize: 11, fontWeight: 600, fontFamily: 'JetBrains Mono,monospace',
+              padding: '1px 7px', borderRadius: 999,
+              background: homeTab === t.id ? 'rgba(27,54,93,0.08)' : 'var(--muted)',
+              color: homeTab === t.id ? 'var(--primary)' : 'var(--muted-foreground)',
+            }}>
+              {t.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
-          const statusBadgeColor = latest?.status === '进行中'
-            ? { bg: '#faf6ec', text: '#9a7b3a', border: '#f4ecd8' }
-            : latest?.status === '筹备中'
-            ? { bg: '#eef2f6', text: '#1b365d', border: '#d8e0ea' }
-            : { bg: '#f4f5f7', text: '#6b7380', border: '#e6e8ec' }
+      {homeTab === 'combo' ? (
+        <>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>召开年月</span>
+            <MonthPicker value={sessionMonth} onChange={setSessionMonth} style={{ width: 160 }} />
+            {sessionMonth && (
+              <Btn label="清空" variant="ghost" small onClick={() => setSessionMonth('')} />
+            )}
+            <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted-foreground)' }}>
+              按召开时间逆序 · 显示 {filteredSessions.length} 个会期
+              {sessionMonth ? `（共 ${scopedSessions.length}）` : ''}
+            </div>
+          </div>
 
-          return (
-            <div
-              key={type.id}
-              className="type-card"
-              style={{ ['--type-color' as string]: type.color, ['--type-bg' as string]: type.bg }}
-              onClick={() => setSelectedTypeId(type.id)}
-            >
-              <div className="type-card-kicker">
-                <span className="type-card-idx">{String(i + 1).padStart(2, '0')}</span>
-                <span className="type-card-count">{typeMeetings.length} 场</span>
-              </div>
-              <div className="type-card-name">{type.name}</div>
-              <div className="type-card-desc">{type.desc}</div>
-
-              {latest ? (
-                <div className="type-card-panel">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: statusBadgeColor.bg, color: statusBadgeColor.text, border: `1px solid ${statusBadgeColor.border}` }}>
-                      {latest.status}
-                    </span>
-                    <span style={{ fontSize: 13, color: 'var(--foreground)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{latest.title}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{latest.date} {latest.time}</span>
-                    <AvatarRow names={allAttendees} />
-                  </div>
-                </div>
-              ) : (
-                <div className="type-card-panel is-empty">
-                  尚未安排会议
-                  <strong>进入后可新建</strong>
-                </div>
+          {filteredSessions.length === 0 ? (
+            <div style={{ padding: '28px 22px', background: 'var(--card)', border: '1px dashed var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--muted-foreground)', textAlign: 'center' }}>
+              {sessionMonth ? `${sessionMonth} 暂无组合会期` : '暂无组合会期'}
+              {!sessionMonth && (
+                <div style={{ marginTop: 8 }}>用「新建组合会议」一次创建多场（如总办会+党委会），并填写共同参会人。</div>
               )}
             </div>
-          )
-        })}
-      </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {filteredSessions.map(s => {
+                const kids = s.meetingIds.map(id => scopedMeetings.find(m => m.id === id)).filter(Boolean) as Meeting[]
+                const st = sessionDerivedStatus(s, meetings)
+                const sharedPeople = uniqNames(kids.flatMap(m => m.attendees))
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => setSelectedSessionId(s.id)}
+                    style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 18px', cursor: 'pointer' }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--primary)' }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                          <Badge label="组合会期" color="bg-slate-50 text-slate-700 border border-slate-200" />
+                          <Badge label={st} color={st === '进行中' ? meetingStatusColor['进行中'] : st === '已结束' ? meetingStatusColor['已结束'] : meetingStatusColor['筹备中']} />
+                          <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{s.id}</span>
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Noto Serif SC',serif" }}>{s.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4 }}>
+                          {s.date} {s.time}–{s.endTime} · {s.location}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                          {kids.map(m => {
+                            const tn = meetingTypes.find(t => t.id === m.typeId)?.name || m.title
+                            return (
+                              <span key={m.id} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, background: 'var(--secondary)', border: '1px solid var(--border)', color: 'var(--foreground)' }}>
+                                {tn} · {m.status}
+                              </span>
+                            )
+                          })}
+                        </div>
+                        {sharedPeople.length > 0 && (
+                          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>共同参会</span>
+                            <AvatarRow names={sharedPeople} />
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600, flexShrink: 0 }}>查看搭配 →</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="type-grid">
+          {gridTypes.map((type, i) => {
+            const typeMeetings = scopedMeetings.filter(m => m.typeId === type.id)
+            const statusOrder: MeetingStatus[] = ['进行中', '筹备中', '已结束']
+            const latest = [...typeMeetings].sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status))[0]
+            const allAttendees = latest?.attendees ?? []
+
+            const statusBadgeColor = latest?.status === '进行中'
+              ? { bg: '#faf6ec', text: '#9a7b3a', border: '#f4ecd8' }
+              : latest?.status === '筹备中'
+              ? { bg: '#eef2f6', text: '#1b365d', border: '#d8e0ea' }
+              : { bg: '#f4f5f7', text: '#6b7380', border: '#e6e8ec' }
+
+            return (
+              <div
+                key={type.id}
+                className="type-card"
+                style={{ ['--type-color' as string]: type.color, ['--type-bg' as string]: type.bg }}
+                onClick={() => setSelectedTypeId(type.id)}
+              >
+                <div className="type-card-kicker">
+                  <span className="type-card-idx">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="type-card-count">{typeMeetings.length} 场</span>
+                </div>
+                <div className="type-card-name">{type.name}</div>
+                <div className="type-card-desc">{type.desc}</div>
+
+                {latest ? (
+                  <div className="type-card-panel">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: statusBadgeColor.bg, color: statusBadgeColor.text, border: `1px solid ${statusBadgeColor.border}` }}>
+                        {latest.status}
+                      </span>
+                      {latest.sessionId && <span style={{ fontSize: 10, color: 'var(--primary)' }}>组合</span>}
+                      <span style={{ fontSize: 13, color: 'var(--foreground)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{latest.title}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{latest.date} {latest.time}</span>
+                      <AvatarRow names={allAttendees} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="type-card-panel is-empty">
+                    尚未安排会议
+                    <strong>进入后可新建</strong>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -3170,7 +5261,10 @@ function MeetingTypeModal({ item, onClose, onSave }: {
     color: item?.color ?? pal.color,
     bg: item?.bg ?? pal.bg,
     enabled: item?.enabled ?? true,
+    usualLocation: item?.usualLocation ?? '',
     usualChair: item?.usualChair ?? '',
+    usualOrganizer: item?.usualOrganizer ?? '',
+    usualOrganizeDept: item?.usualOrganizeDept ?? (MEETING_ORG_DEPTS[0] ?? '集团办公室'),
     usualAttendees: item?.usualAttendees ?? [],
     usualObservers: item?.usualObservers ?? [],
     usualDiscipline: item?.usualDiscipline ?? [],
@@ -3198,7 +5292,10 @@ function MeetingTypeModal({ item, onClose, onSave }: {
               color: form.color,
               bg: form.bg,
               enabled: form.enabled,
+              usualLocation: form.usualLocation.trim(),
               usualChair: form.usualChair.trim(),
+              usualOrganizer: form.usualOrganizer.trim(),
+              usualOrganizeDept: form.usualOrganizeDept,
               usualAttendees: form.usualAttendees,
               usualObservers: form.usualObservers,
               usualDiscipline: form.usualDiscipline,
@@ -3221,6 +5318,14 @@ function MeetingTypeModal({ item, onClose, onSave }: {
       <Field label="说明">
         <input className="field-input" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="简要说明该会议类型用途" />
       </Field>
+      <Field label="会议地点">
+        <input
+          className="field-input"
+          value={form.usualLocation}
+          onChange={e => setForm(f => ({ ...f, usualLocation: e.target.value }))}
+          placeholder="如：总部大厦28层第一会议室"
+        />
+      </Field>
       <PersonField
         label="常见主持人"
         value={form.usualChair}
@@ -3228,6 +5333,30 @@ function MeetingTypeModal({ item, onClose, onSave }: {
         placeholder="点击选择常见主持人"
         note="新建该类型会议时可一键带入"
       />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <PersonField
+          label="会议组织人"
+          value={form.usualOrganizer}
+          onChange={name => {
+            const p = findPerson(name)
+            setForm(f => ({
+              ...f,
+              usualOrganizer: name,
+              usualOrganizeDept: p && MEETING_ORG_DEPTS.includes(p.dept) ? p.dept : f.usualOrganizeDept,
+            }))
+          }}
+          placeholder="点击选择组织人"
+        />
+        <Field label="组织部门">
+          <select
+            className="field-select"
+            value={form.usualOrganizeDept}
+            onChange={e => setForm(f => ({ ...f, usualOrganizeDept: e.target.value }))}
+          >
+            {MEETING_ORG_DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </Field>
+      </div>
       <NameChipField
         label="常见出席人员"
         names={form.usualAttendees}
@@ -3460,7 +5589,7 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
 
   const handleSave = () => {
     const urgency = form.urgency
-    const mins = form.topicKind === '经营管理会议题' && form.minsOther
+    const mins = form.minsOther
       ? Math.max(1, Number(form.customMins) || 0)
       : form.estimatedMins
     const newId = (() => {
@@ -3502,7 +5631,7 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
     onClose()
   }
 
-  const minsOk = !(form.topicKind === '经营管理会议题' && form.minsOther) || (Number(form.customMins) > 0)
+  const minsOk = !form.minsOther || (Number(form.customMins) > 0)
   const canSave = !!(form.title && form.dept && form.submitter && form.presenter && form.targetMeetings.length > 0 && files.length > 0 && minsOk)
   const inputCls = `field-input${!isEditable ? ' is-ro' : ''}`
   const isOffice = form.topicKind === '总经办议题'
@@ -3776,43 +5905,35 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
       </div>
 
       <Field label="汇报时长">
-        {isOffice ? (
-          <select className="field-select" disabled={!isEditable} value={form.estimatedMins} onChange={e => set('estimatedMins', Number(e.target.value))}>
-            <option value={3}>3 分钟</option>
-            <option value={5}>5 分钟（一般）</option>
-            <option value={8}>8 分钟</option>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select
+            className="field-select"
+            disabled={!isEditable}
+            value={form.minsOther ? 'other' : String(form.estimatedMins)}
+            onChange={e => {
+              if (e.target.value === 'other') setForm(f => ({ ...f, minsOther: true }))
+              else setForm(f => ({ ...f, minsOther: false, estimatedMins: Number(e.target.value) }))
+            }}
+            style={{ flex: 1 }}
+          >
+            <option value="3">3 分钟</option>
+            <option value="5">5 分钟（一般）</option>
+            <option value="8">8 分钟</option>
+            <option value="other">其他</option>
           </select>
-        ) : (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <select
-              className="field-select"
-              disabled={!isEditable}
-              value={form.minsOther ? 'other' : String(form.estimatedMins)}
-              onChange={e => {
-                if (e.target.value === 'other') setForm(f => ({ ...f, minsOther: true }))
-                else setForm(f => ({ ...f, minsOther: false, estimatedMins: Number(e.target.value) }))
-              }}
-              style={{ flex: 1 }}
-            >
-              <option value="3">3 分钟</option>
-              <option value="5">5 分钟（一般）</option>
-              <option value="8">8 分钟</option>
-              <option value="other">其他时长</option>
-            </select>
-            {form.minsOther && (
-              <input
-                className={inputCls}
-                readOnly={!isEditable}
-                type="number"
-                min={1}
-                value={form.customMins}
-                onChange={e => set('customMins', e.target.value)}
-                placeholder="分钟"
-                style={{ width: 120 }}
-              />
-            )}
-          </div>
-        )}
+          {form.minsOther && (
+            <input
+              className={inputCls}
+              readOnly={!isEditable}
+              type="number"
+              min={1}
+              value={form.customMins}
+              onChange={e => set('customMins', e.target.value)}
+              placeholder="自定义分钟"
+              style={{ width: 120 }}
+            />
+          )}
+        </div>
       </Field>
 
       <Field label="需列席部门">
@@ -3859,9 +5980,11 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
         ))}
       </Field>
 
-      <Field label="备注">
-        <textarea className="field-area" readOnly={!isEditable} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="其他需要说明的事项" />
-      </Field>
+      {!isCreate && (
+        <Field label="备注">
+          <textarea className="field-area" readOnly={!isEditable} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="其他需要说明的事项" />
+        </Field>
+      )}
 
       {!isCreate && topic.aiSummary && (
         <Field label="系统概要">
@@ -4150,11 +6273,32 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
   const scope = roleScopeCategory(role, roles)
   const scopedTopics = topics.filter(t => topicInRoleScope(t, role, roles, userName))
   const [filter, setFilter] = useState<TopicStatus | '全部'>('全部')
+  const [keyword, setKeyword] = useState('')
+  const [month, setMonth] = useState(currentYearMonth) // YYYY-MM，默认本月
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [modal, setModal] = useState<{ topic: Topic | null; seed?: Topic | null } | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [toast, setToast] = useState('')
 
-  const filtered = filter === '全部' ? scopedTopics : scopedTopics.filter(t => t.status === filter)
+  const searched = scopedTopics.filter(t => {
+    const q = keyword.trim().toLowerCase()
+    if (q) {
+      const hit = t.title.toLowerCase().includes(q)
+        || t.dept.toLowerCase().includes(q)
+        || t.submitter.toLowerCase().includes(q)
+      if (!hit) return false
+    }
+    if (month && !t.submittedAt.startsWith(month)) return false
+    return true
+  })
+
+  const filtered = filter === '全部' ? searched : searched.filter(t => t.status === filter)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize)
+
+  useEffect(() => { setPage(1) }, [filter, keyword, month, pageSize])
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
 
@@ -4218,7 +6362,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
   }
 
   const FILTERS: (TopicStatus | '全部')[] = ['全部', '待安排', '已安排', '锁定中', '已上会']
-  const filterCount = (f: TopicStatus | '全部') => f === '全部' ? scopedTopics.length : scopedTopics.filter(t => t.status === f).length
+  const filterCount = (f: TopicStatus | '全部') => f === '全部' ? searched.length : searched.filter(t => t.status === f).length
   const subtitle = isManager
     ? `议题全生命周期管理：申报 → 安排 → 锁定 → 上会。支持 Excel 批量导入线下收集的议题。${scope ? `当前仅显示${scope}议题。` : ''}`
     : `议题申报入口：可申报议题并跟踪本人相关进度。当前仅显示与「${userName}」相关的议题。`
@@ -4255,8 +6399,32 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
         <div className="toast">{toast}</div>
       )}
 
+      {/* Search bar */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 240px', minWidth: 200, maxWidth: 360 }}>
+          <input
+            className="field-input"
+            value={keyword}
+            onChange={e => setKeyword(e.target.value)}
+            placeholder="搜索议题名称 / 经办部门 / 经办人"
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 12, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>提报年月</span>
+          <MonthPicker value={month} onChange={setMonth} style={{ width: 160 }} />
+        </div>
+        {(keyword || month) && (
+          <Btn
+            label="清空全部条件"
+            variant="ghost"
+            small
+            onClick={() => { setKeyword(''); setMonth('') }}
+          />
+        )}
+      </div>
+
       {/* Filter bar */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         {FILTERS.map(f => {
           const count = filterCount(f)
           return (
@@ -4285,7 +6453,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
             {filtered.length === 0 && (
               <tr><td colSpan={10} style={{ padding: '48px 0', textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 13 }}>暂无相关议题</td></tr>
             )}
-            {filtered.map(t => {
+            {paged.map(t => {
               const canEdit = t.status === '待安排' || t.status === '已安排'
               return (
                 <tr key={t.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.1s' }}
@@ -4323,6 +6491,13 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
             })}
           </tbody>
         </table>
+        <PaginationBar
+          total={filtered.length}
+          page={safePage}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={size => { setPageSize(size); setPage(1) }}
+        />
       </div>
     </div>
   )
@@ -4330,41 +6505,388 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
 
 // ─── Meeting Live ─────────────────────────────────────────────────────────────
 
+// ─── Material present / cast view ─────────────────────────────────────────────
+
+function parsePresentHash() {
+  const raw = window.location.hash
+  if (!raw.startsWith('#/present')) return null
+  const q = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : ''
+  const p = new URLSearchParams(q)
+  const file = p.get('file')
+  if (!file) return null
+  const minsRaw = Number(p.get('mins') || 0)
+  return {
+    file,
+    topic: p.get('topic') || '',
+    meeting: p.get('meeting') || '',
+    mins: Number.isFinite(minsRaw) && minsRaw > 0 ? minsRaw : 5,
+  }
+}
+
+function openMaterialPresent(opts: { file: string; topic?: string; meeting?: string; mins?: number }) {
+  const q = new URLSearchParams({ file: opts.file })
+  if (opts.topic) q.set('topic', opts.topic)
+  if (opts.meeting) q.set('meeting', opts.meeting)
+  if (opts.mins && opts.mins > 0) q.set('mins', String(opts.mins))
+  const url = `${window.location.origin}${window.location.pathname}${window.location.search}#/present?${q.toString()}`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+function materialExt(name: string) {
+  const ext = (name.split('.').pop() || 'FILE').toUpperCase()
+  if (ext.includes('PPT')) return 'PPT'
+  if (ext.includes('XLS')) return 'XLS'
+  if (ext.includes('DOC')) return 'DOC'
+  return 'PDF'
+}
+
+function buildPresentSlides(file: string, topic: string) {
+  const kind = materialExt(file)
+  const title = file.replace(/\.[^.]+$/, '')
+  const topicLabel = topic || title
+  if (kind === 'PPT') {
+    return [
+      { heading: title, body: topicLabel, hint: '封面 · 投屏演示' },
+      { heading: '背景与目标', body: `围绕「${topicLabel}」梳理现状、目标与关键约束，供与会领导对齐认知。`, hint: '第 2 页' },
+      { heading: '核心方案', body: '提案路径、资源投入与里程碑节奏；请对照附件材料进行审议。', hint: '第 3 页' },
+      { heading: '需决策事项', body: '请确认是否原则同意本方案，以及后续责任部门与时限要求。', hint: '第 4 页' },
+    ]
+  }
+  return [
+    { heading: title, body: topicLabel, hint: `${kind} · 第 1 页` },
+    { heading: '摘要', body: `本文件为「${topicLabel}」配套材料，可全屏投屏供现场翻阅。`, hint: `${kind} · 第 2 页` },
+    { heading: '正文要点', body: '关键结论、数据口径与建议事项见原文对应章节；投屏模式下可用左右键翻页。', hint: `${kind} · 第 3 页` },
+  ]
+}
+
+function formatCountdown(totalSec: number) {
+  const overtime = totalSec < 0
+  const abs = Math.abs(totalSec)
+  const m = Math.floor(abs / 60)
+  const s = abs % 60
+  const body = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return overtime ? `+${body}` : body
+}
+
+/** 投屏倒计时小插件：可拖拽，按议题约定时长倒计时 */
+function PresentCountdownTimer({ mins }: { mins: number }) {
+  const total = Math.max(1, Math.round(mins)) * 60
+  const [left, setLeft] = useState(total)
+  const [running, setRunning] = useState(false)
+  const [pos, setPos] = useState(() => ({
+    x: typeof window !== 'undefined' ? Math.max(8, window.innerWidth - 200) : 24,
+    y: 68,
+  }))
+  const dragRef = useRef<{ ox: number; oy: number; sx: number; sy: number } | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!running) return
+    const id = window.setInterval(() => setLeft(v => v - 1), 1000)
+    return () => window.clearInterval(id)
+  }, [running])
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const d = dragRef.current
+      if (!d) return
+      const w = panelRef.current?.offsetWidth ?? 180
+      const h = panelRef.current?.offsetHeight ?? 120
+      const nx = Math.min(window.innerWidth - w - 8, Math.max(8, d.sx + e.clientX - d.ox))
+      const ny = Math.min(window.innerHeight - h - 8, Math.max(8, d.sy + e.clientY - d.oy))
+      setPos({ x: nx, y: ny })
+    }
+    const onUp = () => { dragRef.current = null }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
+
+  const overtime = left < 0
+  const warn = left >= 0 && left <= 60
+  const accent = overtime ? '#e8a0a0' : warn ? '#e8c07a' : '#c4a35a'
+  const btnBase: React.CSSProperties = {
+    flex: 1, padding: '5px 0', borderRadius: 4, border: '1px solid rgba(255,255,255,0.18)',
+    background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', cursor: 'pointer',
+    fontSize: 11, fontFamily: 'inherit', fontWeight: 600,
+  }
+
+  return (
+    <div
+      ref={panelRef}
+      onClick={e => e.stopPropagation()}
+      onMouseDown={e => e.stopPropagation()}
+      style={{
+        position: 'fixed', left: pos.x, top: pos.y, zIndex: 50, width: 176,
+        background: 'rgba(15, 23, 36, 0.92)', border: `1px solid ${accent}55`,
+        borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)',
+        color: '#f4f1ea', userSelect: 'none',
+      }}
+    >
+      <div
+        onMouseDown={e => {
+          e.preventDefault()
+          dragRef.current = { ox: e.clientX, oy: e.clientY, sx: pos.x, sy: pos.y }
+        }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px 4px',
+          cursor: 'grab', borderBottom: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <span style={{ fontSize: 10, color: 'rgba(244,241,234,0.45)', letterSpacing: '0.06em' }}>⋮⋮</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: accent }}>议题计时</span>
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(244,241,234,0.4)' }}>约定 {mins} 分</span>
+      </div>
+      <div style={{ padding: '10px 12px 12px', textAlign: 'center' }}>
+        <div style={{
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 28, fontWeight: 700,
+          letterSpacing: '0.04em', color: accent, lineHeight: 1.1, marginBottom: 4,
+        }}>
+          {formatCountdown(left)}
+        </div>
+        <div style={{ fontSize: 10, color: 'rgba(244,241,234,0.4)', marginBottom: 10 }}>
+          {running ? (overtime ? '已超时' : '计时中') : left === total ? '未开始' : overtime ? '已暂停 · 超时' : '已暂停'}
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {!running ? (
+            <button type="button" style={{ ...btnBase, background: 'rgba(196,163,90,0.22)', borderColor: 'rgba(196,163,90,0.45)' }} onClick={() => setRunning(true)}>
+              {left === total ? '开启' : '继续'}
+            </button>
+          ) : (
+            <button type="button" style={btnBase} onClick={() => setRunning(false)}>暂停</button>
+          )}
+          <button
+            type="button"
+            style={btnBase}
+            onClick={() => { setRunning(false); setLeft(total) }}
+          >
+            重新计时
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MaterialPresentView({ file, topic, meeting, mins }: { file: string; topic: string; meeting: string; mins: number }) {
+  const kind = materialExt(file)
+  const slides = buildPresentSlides(file, topic)
+  const [idx, setIdx] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const slide = slides[idx]
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const syncFs = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', syncFs)
+    return () => document.removeEventListener('fullscreenchange', syncFs)
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault()
+        setIdx(i => Math.min(slides.length - 1, i + 1))
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault()
+        setIdx(i => Math.max(0, i - 1))
+      } else if (e.key === 'Escape') {
+        if (document.fullscreenElement) return
+        window.close()
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault()
+        if (!document.fullscreenElement) rootRef.current?.requestFullscreen?.()
+        else document.exitFullscreen?.()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [slides.length])
+
+  const goFullscreen = () => {
+    if (!document.fullscreenElement) rootRef.current?.requestFullscreen?.()
+    else document.exitFullscreen?.()
+  }
+
+  const chromeBtn: React.CSSProperties = {
+    height: 30, padding: '0 12px', borderRadius: 6,
+    border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.08)',
+    color: '#f4f1ea', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 500,
+  }
+
+  return (
+    <div ref={rootRef} style={{ position: 'fixed', inset: 0, background: '#111827', color: '#f4f1ea', fontFamily: 'inherit', overflow: 'hidden' }}>
+      <PresentCountdownTimer mins={mins} />
+
+      <div
+        style={{ position: 'absolute', inset: 0, background: '#f8f6f1', color: '#1a2332', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: isFullscreen ? '6vh 5vw' : '8vh 6vw' }}
+        onClick={() => setIdx(i => Math.min(slides.length - 1, i + 1))}
+      >
+        <div style={{ position: 'absolute', top: isFullscreen ? 28 : 72, left: '5vw', fontSize: 13, color: '#8a7350', letterSpacing: '0.06em' }}>{slide.hint}</div>
+        <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 'clamp(28px, 4.2vw, 56px)', fontWeight: 700, lineHeight: 1.3, marginBottom: 'clamp(12px, 2vh, 28px)', maxWidth: '92%' }}>{slide.heading}</div>
+        <div style={{ fontSize: 'clamp(16px, 1.8vw, 26px)', lineHeight: 1.75, color: '#3d4a5c', maxWidth: '88%' }}>{slide.body}</div>
+        <div style={{ position: 'absolute', bottom: isFullscreen ? 28 : 80, right: '5vw', fontSize: 14, color: '#9aa3b2', fontFamily: 'JetBrains Mono, monospace' }}>{idx + 1} / {slides.length}</div>
+      </div>
+
+      {!isFullscreen && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'absolute', top: 14, left: 14, right: 14, zIndex: 20, height: 44,
+            display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px 0 14px',
+            background: 'rgba(17, 24, 39, 0.88)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', backdropFilter: 'blur(10px)',
+          }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#c4a35a', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>投屏演示</span>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap',
+            background: kind === 'PPT' ? 'rgba(138,90,43,0.35)' : 'rgba(59,130,246,0.25)',
+            color: kind === 'PPT' ? '#e8c9a0' : '#bfdbfe',
+          }}>{kind}</span>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'rgba(244,241,234,0.92)' }}>{file}</div>
+          {(topic || meeting) && (
+            <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.45)', flexShrink: 1, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {[meeting, topic].filter(Boolean).join(' · ')}
+            </div>
+          )}
+          <button type="button" onClick={goFullscreen} style={chromeBtn}>全屏 (F)</button>
+          <button type="button" onClick={() => window.close()} style={{ ...chromeBtn, color: 'rgba(244,241,234,0.75)' }}>关闭</button>
+        </div>
+      )}
+
+      {!isFullscreen && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+            background: 'rgba(17, 24, 39, 0.88)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 999, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', backdropFilter: 'blur(10px)',
+          }}
+        >
+          <button
+            type="button"
+            disabled={idx === 0}
+            onClick={() => setIdx(i => Math.max(0, i - 1))}
+            style={{ ...chromeBtn, borderRadius: 999, opacity: idx === 0 ? 0.35 : 1, cursor: idx === 0 ? 'default' : 'pointer' }}
+          >上一页</button>
+          <div style={{ display: 'flex', gap: 5, padding: '0 6px', alignItems: 'center' }}>
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setIdx(i)}
+                style={{ width: i === idx ? 16 : 7, height: 7, borderRadius: 999, border: 'none', background: i === idx ? '#c4a35a' : 'rgba(255,255,255,0.28)', cursor: 'pointer', padding: 0 }}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={idx === slides.length - 1}
+            onClick={() => setIdx(i => Math.min(slides.length - 1, i + 1))}
+            style={{
+              ...chromeBtn, borderRadius: 999,
+              background: idx === slides.length - 1 ? 'rgba(255,255,255,0.08)' : 'rgba(196,163,90,0.28)',
+              borderColor: idx === slides.length - 1 ? 'rgba(255,255,255,0.12)' : 'rgba(196,163,90,0.4)',
+              opacity: idx === slides.length - 1 ? 0.35 : 1,
+              cursor: idx === slides.length - 1 ? 'default' : 'pointer',
+            }}
+          >下一页</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Historical decision data per topic
-const TOPIC_HISTORY: Record<string, { dp: string; quote: string; date: string; meeting: string; note: string }[]> = {
+const TOPIC_HISTORY: Record<string, { date: string; meeting: string; note: string }[]> = {
   'T001': [
-    { dp: '三季度经营目标确认', quote: '三季度要把份额稳住，利润不能靠一次性因素。', date: '05-22', meeting: '5月经营调度会', note: '会上明确三季度营收同比不低于 10%、净利润保底 8 亿元，本次为收官复盘并部署四季度。' },
-    { dp: '华北区整合原则通过', quote: '整合可以做，但节奏要对经销商有交代。', date: '03-18', meeting: '一季度经营分析会', note: '原则同意华北区整合方向，要求形成可执行方案后再上会，本次进入预算与路径审批。' },
+    { date: '2026-05-22', meeting: '5月经营调度会', note: '会上明确三季度营收同比不低于 10%、净利润保底 8 亿元，本次为收官复盘并部署四季度。' },
+    { date: '2026-03-18', meeting: '一季度经营分析会', note: '原则同意华北区整合方向，要求形成可执行方案后再上会，本次进入预算与路径审批。' },
   ],
   'T003': [
-    { dp: '薪酬体系改革方案审批', quote: '薪酬要与贡献挂钩，让实干者有获得感。', date: '06-12', meeting: '人才发展专题会', note: '会上要求人力资源部结合市场薪酬调研，提出宽带薪酬改革方案，本次承接该方向。' },
-    { dp: '绩效联动机制建立', quote: '绩效考核不能只是过场，要真正影响收入分配。', date: '04-08', meeting: '总经理办公会', note: '四月会议已就绩效与薪酬联动做原则性决策，本次进入落地方案审批阶段。' },
+    { date: '2026-06-12', meeting: '人才发展专题会', note: '会上要求人力资源部结合市场薪酬调研，提出宽带薪酬改革方案，本次承接该方向。' },
+    { date: '2026-04-08', meeting: '总经理办公会', note: '四月会议已就绩效与薪酬联动做原则性决策，本次进入落地方案审批阶段。' },
   ],
   'T004': [
-    { dp: '投资规模上限审批', quote: '战略性投资不怕多，怕的是没有退出路径。', date: '05-20', meeting: '投资委员会专题', note: '本次议题在五月投资委会上已完成尽调汇报，本次为最终审批节点。' },
+    { date: '2026-05-20', meeting: '投资委员会专题', note: '本次议题在五月投资委会上已完成尽调汇报，本次为最终审批节点。' },
   ],
   'T010': [
-    { dp: '华北份额下滑专项督办', quote: '份额掉了要找到渠道结构问题，不能只压任务。', date: '06-26', meeting: '6月经营调度会', note: '要求大区拿出下沉方案与经销商考核修订稿，本次为方案审议节点。' },
-    { dp: '经销商分级试点授权', quote: '先试点、后铺开，服务权重必须加进去。', date: '04-16', meeting: '区域渠道专题会', note: '原则同意经销商分级管理，本次明确考核权重与 12 城试点名单。' },
+    { date: '2026-06-26', meeting: '6月经营调度会', note: '要求大区拿出下沉方案与经销商考核修订稿，本次为方案审议节点。' },
+    { date: '2026-04-16', meeting: '区域渠道专题会', note: '原则同意经销商分级管理，本次明确考核权重与 12 城试点名单。' },
   ],
   'T011': [
-    { dp: '关键物料双源策略', quote: '芯片和电驱件不能再单点依赖。', date: '07-10', meeting: '供应链专题会', note: '已要求采购管理部形成保供清单与替代路径，本次确认四季度排产优先级。' },
+    { date: '2026-07-10', meeting: '供应链专题会', note: '已要求采购管理部形成保供清单与替代路径，本次确认四季度排产优先级。' },
   ],
 }
 
-function MeetingLiveHub({ liveMeetings, meetingTypes, onEnter }: {
+function MeetingLiveHub({ liveMeetings, meetingTypes, sessions = [], onEnter }: {
   liveMeetings: Meeting[]
   meetingTypes: MeetingTypeDef[]
+  sessions?: MeetingSession[]
   onEnter: (id: string) => void
 }) {
   const { role, roles } = usePermission()
   const scope = roleScopeCategory(role, roles)
 
+  const sessionGroups = sessions
+    .map(s => ({
+      session: s,
+      kids: s.meetingIds.map(id => liveMeetings.find(m => m.id === id)).filter(Boolean) as Meeting[],
+    }))
+    .filter(g => g.kids.length > 0)
+
+  const groupedIds = new Set(sessionGroups.flatMap(g => g.kids.map(m => m.id)))
+  const singles = liveMeetings.filter(m => !groupedIds.has(m.id))
+
+  const renderMeetingCard = (m: Meeting, nested = false) => {
+    const typeMeta = meetingTypes.find(t => t.id === m.typeId)
+    const topicCount = m.meetingTopics.length
+    return (
+      <div
+        key={m.id}
+        onClick={() => onEnter(m.id)}
+        style={{
+          background: nested ? 'var(--secondary)' : 'var(--card)',
+          border: '1px solid var(--border)', borderRadius: 8,
+          padding: nested ? '12px 14px' : '18px 22px', cursor: 'pointer', transition: 'border-color 0.15s',
+        }}
+        onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--primary)' }}
+        onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+              <Badge label="进行中" color="bg-amber-50 text-amber-800 border border-amber-200" />
+              <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{m.id}</span>
+              {typeMeta && <Badge label={typeMeta.category} color={typeMeta.category === '总经办' ? 'bg-slate-50 text-slate-700 border border-slate-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} />}
+            </div>
+            <div style={{ fontFamily: "'Noto Serif SC',serif", fontSize: nested ? 14 : 15, fontWeight: 700, marginBottom: 7 }}>{m.title}</div>
+            <div className="meta">
+              <span>{m.date} {m.time}–{m.endTime}</span>
+              <span>{m.location}</span>
+              <span>{m.chair}</span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '8px 14px', background: nested ? '#fff' : 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 6, flexShrink: 0 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', fontFamily: 'JetBrains Mono,monospace' }}>{topicCount}</div>
+            <div style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>议题</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 12, fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>进入会中管控 →</div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <SectionHeader
         title="会中管控"
-        subtitle={`选择要管控的进行中的会议。多场会议同时进行时，请分别进入对应会场。${scope ? `当前仅显示${scope}会议。` : ''}`}
+        subtitle={`进行中的会议按组合会期分组展示；同组可识别连开关系。${scope ? `当前仅显示${scope}会议。` : ''}`}
       />
       {liveMeetings.length === 0 && (
         <div className="empty">
@@ -4372,56 +6894,40 @@ function MeetingLiveHub({ liveMeetings, meetingTypes, onEnter }: {
           <div style={{ marginTop: 6, fontSize: 12 }}>请先在会议管理中开始会议，或等待会议状态变为「进行中」</div>
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {liveMeetings.map(m => {
-          const typeMeta = meetingTypes.find(t => t.id === m.typeId)
-          const topicCount = m.meetingTopics.length
-          return (
-            <div
-              key={m.id}
-              onClick={() => onEnter(m.id)}
-              style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '18px 22px', cursor: 'pointer', transition: 'border-color 0.15s' }}
-              onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--primary)' }}
-              onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                    <Badge label="进行中" color="bg-amber-50 text-amber-800 border border-amber-200" />
-                    <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{m.id}</span>
-                    {typeMeta && <Badge label={typeMeta.category} color={typeMeta.category === '总经办' ? 'bg-slate-50 text-slate-700 border border-slate-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} />}
-                  </div>
-                  <div style={{ fontFamily: "'Noto Serif SC',serif", fontSize: 15, fontWeight: 700, marginBottom: 7 }}>{m.title}</div>
-                  <div className="meta">
-                    <span>{m.date} {m.time}–{m.endTime}</span>
-                    <span>{m.location}</span>
-                    <span>{m.chair}</span>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '8px 14px', background: 'var(--secondary)', border: '1px solid var(--border)', borderRadius: 6, flexShrink: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', fontFamily: 'JetBrains Mono,monospace' }}>{topicCount}</div>
-                  <div style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>议题</div>
-                </div>
-              </div>
-              <div style={{ marginTop: 12, fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>进入会中管控 →</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {sessionGroups.map(({ session, kids }) => (
+          <div key={session.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+              <Badge label="组合会期" color="bg-slate-50 text-slate-700 border border-slate-200" />
+              <span style={{ fontSize: 14, fontWeight: 700 }}>{session.name}</span>
+              <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{session.id} · {kids.length} 场进行中</span>
             </div>
-          )
-        })}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {kids.map(m => renderMeetingCard(m, true))}
+            </div>
+          </div>
+        ))}
+        {singles.map(m => renderMeetingCard(m))}
       </div>
     </div>
   )
 }
 
-function MeetingLiveSession({ meeting, topics, onBack, onEnd }: {
+function MeetingLiveSession({ meeting, topics, onBack, onEnd, session, siblings = [], onSwitchMeeting }: {
   meeting: Meeting
   topics: Topic[]
   onBack: () => void
   onEnd: () => void
+  session?: MeetingSession
+  siblings?: Meeting[]
+  onSwitchMeeting?: (id: string) => void
 }) {
   const m = meeting
   const meetingTopics = [...m.meetingTopics].sort((a, b) => a.order - b.order).map(mt => topics.find(t => t.id === mt.topicId)!).filter(Boolean)
   const [currentIdx, setCurrentIdx] = useState(0)
   const [notifyToast, setNotifyToast] = useState('')
+
+  useEffect(() => { setCurrentIdx(0) }, [meeting.id])
 
   const current = meetingTopics[currentIdx]
   const next = meetingTopics[currentIdx + 1] ?? null
@@ -4452,42 +6958,68 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd }: {
     <div style={{ margin: '-28px -32px' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid var(--border)', padding: '0 28px', height: 60, display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={onBack}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--card)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--muted-foreground)', flexShrink: 0 }}
-        >
-          ← 返回
-        </button>
-        {/* Live badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#faf6ec', border: '1px solid #f4ecd8', borderRadius: 20, padding: '4px 12px 4px 8px' }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse-ring 2s infinite' }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#9a7b3a' }}>进行中</span>
+      <div style={{ background: '#fff', borderBottom: '1px solid var(--border)', padding: '12px 28px 14px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, minHeight: 44 }}>
+          <button
+            type="button"
+            onClick={onBack}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--card)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--muted-foreground)', flexShrink: 0 }}
+          >
+            ← 返回
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#faf6ec', border: '1px solid #f4ecd8', borderRadius: 20, padding: '4px 12px 4px 8px', flexShrink: 0 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse-ring 2s infinite' }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#9a7b3a' }}>进行中</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {session && (
+              <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginBottom: 4, lineHeight: 1.4 }}>
+                组合 · {session.name}
+              </div>
+            )}
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.35 }}>{m.title}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 0, alignItems: 'center', flexShrink: 0 }}>
+            {[`${m.date}`, m.time, m.location, `主持 ${m.chair}`].map((item, i) => (
+              <span key={i} style={{ fontSize: 12, color: 'var(--muted-foreground)', padding: '0 14px', borderLeft: i > 0 ? '1px solid var(--border)' : 'none' }}>{item}</span>
+            ))}
+          </div>
+          <Btn
+            label="结束会议"
+            variant="danger"
+            small
+            onClick={() => {
+              if (!window.confirm(`确认结束会议「${m.title}」？结束后相关议题将标记为已上会。`)) return
+              onEnd()
+            }}
+          />
         </div>
-        {/* Title */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.3 }}>{m.title}</div>
-        </div>
-        {/* Meta */}
-        <div style={{ display: 'flex', gap: 0, alignItems: 'center' }}>
-          {[`${m.date}`, m.time, m.location, `主持 ${m.chair}`].map((item, i) => (
-            <span key={i} style={{ fontSize: 12, color: 'var(--muted-foreground)', padding: '0 14px', borderLeft: i > 0 ? '1px solid var(--border)' : 'none' }}>{item}</span>
-          ))}
-        </div>
-        <Btn
-          label="结束会议"
-          variant="danger"
-          small
-          onClick={() => {
-            if (!window.confirm(`确认结束会议「${m.title}」？结束后相关议题将标记为已上会。`)) return
-            onEnd()
-          }}
-        />
+        {session && siblings.length > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: 'var(--muted-foreground)', flexShrink: 0 }}>切换子会</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {siblings.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onSwitchMeeting?.(s.id)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
+                    border: s.id === m.id ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                    background: s.id === m.id ? 'var(--secondary)' : '#fff',
+                    color: s.id === m.id ? 'var(--primary)' : 'var(--muted-foreground)', fontWeight: s.id === m.id ? 600 : 400,
+                  }}
+                >
+                  {s.title.replace(/^集团/, '')}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Progress strip ── */}
-      <div style={{ background: 'var(--background)', borderBottom: '1px solid var(--border)', padding: '7px 28px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+      <div style={{ background: 'var(--background)', borderBottom: '1px solid var(--border)', padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted-foreground)' }}>会议进度</span>
         <div style={{ flex: 1, height: 3, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${overallPct}%`, background: 'var(--primary)', borderRadius: 2, transition: 'width 0.6s ease' }} />
@@ -4543,7 +7075,30 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd }: {
             <LiveHead title="议题附件" meta={`${materials.length} 份`} />
             <div className="live-card-body">
               {materials.map((f, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--muted)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: i < materials.length - 1 ? 6 : 0, cursor: 'pointer' }}
+                <div
+                  key={i}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const mt = m.meetingTopics.find(x => x.topicId === current.id)
+                    openMaterialPresent({
+                      file: f.name,
+                      topic: current.title,
+                      meeting: m.title,
+                      mins: mt?.customMins ?? current.estimatedMins,
+                    })
+                  }}
+                  onKeyDown={e => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return
+                    const mt = m.meetingTopics.find(x => x.topicId === current.id)
+                    openMaterialPresent({
+                      file: f.name,
+                      topic: current.title,
+                      meeting: m.title,
+                      mins: mt?.customMins ?? current.estimatedMins,
+                    })
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--muted)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: i < materials.length - 1 ? 6 : 0, cursor: 'pointer' }}
                   onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
                   onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}
                 >
@@ -4554,7 +7109,7 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd }: {
                     <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{f.size}</div>
                   </div>
-                  <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>预览</span>
+                  <span style={{ fontSize: 12, color: 'var(--primary)' }}>投屏</span>
                 </div>
               ))}
             </div>
@@ -4591,34 +7146,17 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd }: {
 
               {history.length > 0 && (
                 <div style={{ position: 'relative' }}>
-                  {/* Vertical line */}
                   <div style={{ position: 'absolute', left: 11, top: 12, bottom: 12, width: 1, background: '#e2e8f0' }} />
-
                   {history.map((h, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 16, marginBottom: i < history.length - 1 ? 28 : 0, position: 'relative' }}>
-                      {/* Timeline dot */}
+                    <div key={i} style={{ display: 'flex', gap: 16, marginBottom: i < history.length - 1 ? 22 : 0, position: 'relative' }}>
                       <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--secondary)', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, marginTop: 1 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />
                       </div>
-
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Decision point label */}
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 8 }}>{h.dp}</div>
-
-                        {/* Quote */}
-                        <div style={{ background: 'var(--secondary)', border: '1px solid var(--border)', borderLeft: '3px solid var(--primary)', borderRadius: '0 6px 6px 0', padding: '10px 14px', marginBottom: 10 }}>
-                          <p style={{ margin: 0, fontSize: 13, color: 'var(--primary)', lineHeight: 1.7, fontStyle: 'italic' }}>"{h.quote}"</p>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 6 }}>
+                          {h.date}<span style={{ display: 'inline-block', width: 12 }} />{h.meeting}
                         </div>
-
-                        {/* Meta row */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, color: 'var(--muted-foreground)', background: 'var(--muted)', padding: '2px 8px', borderRadius: 4 }}>{h.date}</span>
-                          <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>·</span>
-                          <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{h.meeting}</span>
-                        </div>
-
-                        {/* Context note */}
-                        <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.75 }}>{h.note}</p>
+                        <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.75 }}>{h.note}</p>
                       </div>
                     </div>
                   ))}
@@ -4632,11 +7170,12 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd }: {
   )
 }
 
-function MeetingLive({ meetings, setMeetings, topics, setTopics, selectedId, onSelect }: {
+function MeetingLive({ meetings, setMeetings, topics, setTopics, sessions, selectedId, onSelect }: {
   meetings: Meeting[]
   setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>
   topics: Topic[]
   setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
+  sessions: MeetingSession[]
   selectedId: string | null
   onSelect: (id: string | null) => void
 }) {
@@ -4649,13 +7188,21 @@ function MeetingLive({ meetings, setMeetings, topics, setTopics, selectedId, onS
   const meeting = selectedId ? meetings.find(m => m.id === selectedId) : null
 
   if (!meeting || meeting.status !== '进行中' || !meetingInRoleScope(meeting, role, meetingTypes, roles)) {
-    return <MeetingLiveHub liveMeetings={liveMeetings} meetingTypes={meetingTypes} onEnter={onSelect} />
+    return <MeetingLiveHub liveMeetings={liveMeetings} meetingTypes={meetingTypes} sessions={sessions} onEnter={onSelect} />
   }
+
+  const session = meeting.sessionId ? sessions.find(s => s.id === meeting.sessionId) : undefined
+  const siblings = session
+    ? (session.meetingIds.map(id => meetings.find(m => m.id === id)).filter(m => m && m.status === '进行中') as Meeting[])
+    : []
 
   return (
     <MeetingLiveSession
       meeting={meeting}
       topics={topics}
+      session={session}
+      siblings={siblings}
+      onSwitchMeeting={onSelect}
       onBack={() => onSelect(null)}
       onEnd={() => {
         setMeetings(prev => prev.map(m => m.id === meeting.id ? { ...m, status: '已结束' } : m))
@@ -5385,16 +7932,35 @@ function MinutesView({ topics, setTopics, meetings }: {
   const { role, roles } = usePermission()
   const { meetingTypes } = useMeetingCatalog()
   const scope = roleScopeCategory(role, roles)
+  const [typeId, setTypeId] = useState('')
+  const [month, setMonth] = useState(currentYearMonth)
+  const typeOptions = meetingTypes.filter(t => t.enabled && meetingTypeInRoleScope(t, role, roles))
+
   const scopedMeetings = meetings
     .filter(m => m.status === '已结束')
     .filter(m => meetingInRoleScope(m, role, meetingTypes, roles))
+    .filter(m => !typeId || m.typeId === typeId)
+    .filter(m => !month || m.date.startsWith(month))
     .sort((a, b) => {
-    const aDone = INIT_MINUTES[a.id] ? 1 : 0
-    const bDone = INIT_MINUTES[b.id] ? 1 : 0
-    if (aDone !== bDone) return aDone - bDone
-    return b.date.localeCompare(a.date)
-  })
-  const [selectedId, setSelectedId] = useState<string>(scopedMeetings[0]?.id ?? '')
+      const aDone = INIT_MINUTES[a.id] ? 1 : 0
+      const bDone = INIT_MINUTES[b.id] ? 1 : 0
+      if (aDone !== bDone) return aDone - bDone
+      const ka = `${a.date}T${a.time || '00:00'}`
+      const kb = `${b.date}T${b.time || '00:00'}`
+      return kb.localeCompare(ka)
+    })
+
+  const [selectedId, setSelectedId] = useState<string>('')
+  useEffect(() => {
+    if (scopedMeetings.length === 0) {
+      setSelectedId('')
+      return
+    }
+    if (!scopedMeetings.some(m => m.id === selectedId)) {
+      setSelectedId(scopedMeetings[0].id)
+    }
+  }, [scopedMeetings, selectedId])
+
   const selected = scopedMeetings.find(m => m.id === selectedId) ?? scopedMeetings[0]
   const selectedArchived = selected ? INIT_MINUTES[selected.id] : undefined
 
@@ -5402,19 +7968,45 @@ function MinutesView({ topics, setTopics, meetings }: {
     <div>
       <SectionHeader title="会议纪要" subtitle={`先上传 AI 听记与纪要模板生成 Word 初版并本地核改，再导入终版解析摘要、议题结论与督办事项 · 已归档纪要可直接查阅${scope ? ` · 当前仅显示${scope}会议` : ''}`} />
 
-      {scopedMeetings.length === 0 && (
-        <div className="empty">
-          暂无已结束的会议
-          <div style={{ marginTop: 6, fontSize: 12 }}>会议结束后将在此处显示，可上传纪要文件</div>
-        </div>
-      )}
-
-      {scopedMeetings.length > 0 && (
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* Left: meeting list */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--muted-foreground)', letterSpacing: '0.04em' }}>历史会议</div>
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginBottom: 5 }}>会议类型</div>
+              <select
+                className="field-select"
+                value={typeId}
+                onChange={e => setTypeId(e.target.value)}
+                style={{ height: 32, fontSize: 12, padding: '0 28px 0 10px', backgroundPosition: 'right 8px center' }}
+              >
+                <option value="">全部类型</option>
+                {typeOptions.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginBottom: 5 }}>召开年月</div>
+              <MonthPicker value={month} onChange={setMonth} style={{ width: '100%' }} />
+            </div>
+            {(typeId || month) && (
+              <Btn
+                label="清空全部条件"
+                variant="ghost"
+                small
+                onClick={() => { setTypeId(''); setMonth('') }}
+              />
+            )}
+            <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>共 {scopedMeetings.length} 场</div>
+          </div>
+          {scopedMeetings.length === 0 && (
+            <div style={{ padding: '28px 14px', textAlign: 'center', fontSize: 12, color: 'var(--muted-foreground)' }}>
+              暂无符合条件的已结束会议
+            </div>
+          )}
           {scopedMeetings.map(m => {
             const archived = INIT_MINUTES[m.id]
             return (
@@ -5434,6 +8026,12 @@ function MinutesView({ topics, setTopics, meetings }: {
 
         {/* Right: minutes panel */}
         <div>
+          {!selected && (
+            <div className="empty">
+              暂无已结束的会议
+              <div style={{ marginTop: 6, fontSize: 12 }}>可调整左侧会议类型或召开年月筛选</div>
+            </div>
+          )}
           {selected && (
             <>
               <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 18px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -5451,7 +8049,6 @@ function MinutesView({ topics, setTopics, meetings }: {
           )}
         </div>
       </div>
-      )}
     </div>
   )
 }
@@ -5792,14 +8389,33 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 export default function App() {
+  const [present, setPresent] = useState(() => parsePresentHash())
   const [activeSection, setActiveSection] = useState<NavSection>('meetings')
   const [topics, setTopics] = useState<Topic[]>(INIT_TOPICS)
   const [meetings, setMeetings] = useState<Meeting[]>(INIT_MEETINGS)
+  const [sessions, setSessions] = useState<MeetingSession[]>(INIT_SESSIONS)
   const [meetingTypes, setMeetingTypes] = useState<MeetingTypeDef[]>(INIT_MEETING_TYPES)
   const [roles, setRoles] = useState<RoleDef[]>(INIT_ROLES)
   const [role, setRole] = useState<UserRole>('admin')
   const [userName, setUserName] = useState('王总助')
   const [liveMeetingId, setLiveMeetingId] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('zh-sidebar-collapsed') === '1' } catch { return false }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem('zh-sidebar-collapsed', sidebarCollapsed ? '1' : '0') } catch { /* ignore */ }
+  }, [sidebarCollapsed])
+
+  useEffect(() => {
+    const sync = () => setPresent(parsePresentHash())
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [])
+
+  if (present) {
+    return <MaterialPresentView file={present.file} topic={present.topic} meeting={present.meeting} mins={present.mins} />
+  }
 
   const roleMeta = role === EMPLOYEE_ROLE_ID
     ? { id: EMPLOYEE_ROLE_ID, name: '普通员工', dept: '业务部门', avatar: (userName || '员').slice(0, 1), members: DEMO_PEOPLE }
@@ -5809,6 +8425,7 @@ export default function App() {
   const memberOptions = isEmployeeView ? DEMO_PEOPLE : (roleMeta.members.length > 0 ? roleMeta.members : [userName])
   const visibleNav = NAV_ITEMS.filter(item => roleCanAccess(role, item.id, roles))
   const groups = [...new Set(visibleNav.map(i => i.group))]
+  const sidebarW = sidebarCollapsed ? 64 : 228
 
   const handleNav = (section: NavSection, meetingId?: string) => {
     if (section === 'meeting-live') setLiveMeetingId(meetingId ?? null)
@@ -5844,24 +8461,31 @@ export default function App() {
     <PermissionContext.Provider value={{ role, setRole, roles, setRoles, userName, setUserName }}>
     <MeetingCatalogContext.Provider value={{ meetingTypes, setMeetingTypes }}>
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--background)' }}>
-      <aside style={{ width: 'var(--sidebar-width)', background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <aside style={{
+        width: sidebarW, background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0,
+        transition: 'width 0.2s ease', overflow: 'hidden',
+      }}>
 
-        <div style={{ padding: '18px 16px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 7, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ padding: sidebarCollapsed ? '16px 0 12px' : '18px 16px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: sidebarCollapsed ? 'center' : undefined, padding: sidebarCollapsed ? '0 8px' : 0 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 7, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title="智会">
               <IconLogo c="#12203a" />
             </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f1ea', lineHeight: 1.25, letterSpacing: '0.04em', fontFamily: "'Noto Serif SC', serif" }}>智会</div>
-              <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.45)', marginTop: 3 }}>议而有决 · 决而有行</div>
-            </div>
+            {!sidebarCollapsed && (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f1ea', lineHeight: 1.25, letterSpacing: '0.04em', fontFamily: "'Noto Serif SC', serif" }}>智会</div>
+                <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.45)', marginTop: 3 }}>议而有决 · 决而有行</div>
+              </div>
+            )}
           </div>
         </div>
 
-        <nav style={{ flex: 1, padding: '14px 10px' }}>
+        <nav style={{ flex: 1, padding: sidebarCollapsed ? '12px 8px' : '14px 10px', overflowY: 'auto' }}>
           {groups.map(g => (
-            <div key={g} style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(244,241,234,0.38)', letterSpacing: '0.12em', padding: '0 10px', marginBottom: 6 }}>{g}</div>
+            <div key={g} style={{ marginBottom: sidebarCollapsed ? 10 : 20 }}>
+              {!sidebarCollapsed && (
+                <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(244,241,234,0.38)', letterSpacing: '0.12em', padding: '0 10px', marginBottom: 6 }}>{g}</div>
+              )}
               {visibleNav.filter(i => i.group === g).map(item => {
                 const active = activeSection === item.id
                 const iconColor = active ? 'var(--accent)' : 'rgba(244,241,234,0.5)'
@@ -5869,14 +8493,17 @@ export default function App() {
                   <div
                     key={item.id}
                     className="nav-item"
+                    title={item.label}
                     onClick={() => handleNav(item.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 2,
+                      justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                      padding: sidebarCollapsed ? '10px 0' : '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 2,
                       background: active ? 'rgba(196,163,90,0.14)' : 'transparent',
                       color: active ? '#f4f1ea' : 'rgba(244,241,234,0.72)',
                       fontSize: 13, fontWeight: active ? 600 : 400,
-                      borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
+                      borderLeft: sidebarCollapsed ? 'none' : (active ? '2px solid var(--accent)' : '2px solid transparent'),
+                      boxShadow: sidebarCollapsed && active ? 'inset 0 0 0 1px rgba(196,163,90,0.45)' : 'none',
                     }}
                     onMouseOver={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
                     onMouseOut={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
@@ -5884,7 +8511,7 @@ export default function App() {
                     <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                       {item.icon(iconColor)}
                     </span>
-                    {item.label}
+                    {!sidebarCollapsed && item.label}
                   </div>
                 )
               })}
@@ -5892,44 +8519,75 @@ export default function App() {
           ))}
         </nav>
 
-        <div style={{ padding: '14px 16px', borderTop: '1px solid var(--sidebar-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(196,163,90,0.2)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{roleMeta.avatar}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: '#f4f1ea', fontWeight: 500, lineHeight: 1.3 }}>{userName}</div>
-              <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.42)', marginTop: 1 }}>{roleMeta.name}</div>
-            </div>
-          </div>
-          <select
-            value={isEmployeeView ? 'employee' : 'manager'}
-            onChange={e => handleIdentityMode(e.target.value as 'manager' | 'employee')}
-            style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}
-          >
-            <option value="manager" style={{ color: '#1c2430' }}>管理员视角</option>
-            <option value="employee" style={{ color: '#1c2430' }}>普通员工（仅本人议题）</option>
-          </select>
-          {!isEmployeeView && (
-            <select
-              value={role}
-              onChange={e => handleRoleChange(e.target.value as UserRole)}
-              style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}
-            >
-              {enabledRoles.map(r => <option key={r.id} value={r.id} style={{ color: '#1c2430' }}>{r.name}</option>)}
-            </select>
+        <div style={{ padding: sidebarCollapsed ? '10px 8px' : '14px 16px', borderTop: '1px solid var(--sidebar-border)' }}>
+          {!sidebarCollapsed ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(196,163,90,0.2)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{roleMeta.avatar}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: '#f4f1ea', fontWeight: 500, lineHeight: 1.3 }}>{userName}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.42)', marginTop: 1 }}>{roleMeta.name}</div>
+                </div>
+              </div>
+              <select
+                value={isEmployeeView ? 'employee' : 'manager'}
+                onChange={e => handleIdentityMode(e.target.value as 'manager' | 'employee')}
+                style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}
+              >
+                <option value="manager" style={{ color: '#1c2430' }}>管理员视角</option>
+                <option value="employee" style={{ color: '#1c2430' }}>普通员工（仅本人议题）</option>
+              </select>
+              {!isEmployeeView && (
+                <select
+                  value={role}
+                  onChange={e => handleRoleChange(e.target.value as UserRole)}
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}
+                >
+                  {enabledRoles.map(r => <option key={r.id} value={r.id} style={{ color: '#1c2430' }}>{r.name}</option>)}
+                </select>
+              )}
+              <select
+                value={memberOptions.includes(userName) ? userName : memberOptions[0]}
+                onChange={e => setUserName(e.target.value)}
+                style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}
+              >
+                {memberOptions.map(name => <option key={name} value={name} style={{ color: '#1c2430' }}>{name}</option>)}
+              </select>
+            </>
+          ) : (
+            <div title={`${userName} · ${roleMeta.name}`} style={{ width: 28, height: 28, margin: '0 auto 8px', borderRadius: '50%', background: 'rgba(196,163,90,0.2)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{roleMeta.avatar}</div>
           )}
-          <select
-            value={memberOptions.includes(userName) ? userName : memberOptions[0]}
-            onChange={e => setUserName(e.target.value)}
-            style={{ width: '100%', padding: '6px 8px', borderRadius: 5, border: '1px solid var(--sidebar-border)', background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}
+          <button
+            type="button"
+            title={sidebarCollapsed ? '展开导航' : '折叠导航'}
+            onClick={() => setSidebarCollapsed(v => !v)}
+            style={{
+              width: '100%', height: 32, borderRadius: 6, border: '1px solid var(--sidebar-border)',
+              background: 'rgba(255,255,255,0.06)', color: 'rgba(244,241,234,0.75)', cursor: 'pointer',
+              fontSize: 12, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
           >
-            {memberOptions.map(name => <option key={name} value={name} style={{ color: '#1c2430' }}>{name}</option>)}
-          </select>
+            <span style={{ fontSize: 14, lineHeight: 1 }}>{sidebarCollapsed ? '»' : '«'}</span>
+            {!sidebarCollapsed && <span>折叠导航</span>}
+          </button>
         </div>
       </aside>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <header style={{ height: 'var(--header-height)', background: '#fff', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            {sidebarCollapsed && (
+              <button
+                type="button"
+                title="展开导航"
+                onClick={() => setSidebarCollapsed(false)}
+                style={{
+                  width: 30, height: 30, marginRight: 4, borderRadius: 6, border: '1px solid var(--border)',
+                  background: '#fff', color: 'var(--muted-foreground)', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >»</button>
+            )}
             <span style={{ color: 'var(--muted-foreground)' }}>集团总部</span>
             <span style={{ color: '#d5d8de' }}>/</span>
             <span style={{ color: 'var(--foreground)', fontWeight: 600 }}>{NAV_ITEMS.find(i => i.id === activeSection)?.label}</span>
@@ -5949,8 +8607,8 @@ export default function App() {
           {activeSection === 'dashboard' && <Dashboard onNav={handleNav} topics={topics} meetings={meetings} />}
           {activeSection === 'meeting-types' && <MeetingTypesView />}
           {activeSection === 'topics' && <TopicsView topics={topics} setTopics={setTopics} meetings={meetings} setMeetings={setMeetings} />}
-          {activeSection === 'meetings' && <MeetingsView topics={topics} setTopics={setTopics} meetings={meetings} setMeetings={setMeetings} onNav={handleNav} />}
-          {activeSection === 'meeting-live' && <MeetingLive meetings={meetings} setMeetings={setMeetings} topics={topics} setTopics={setTopics} selectedId={liveMeetingId} onSelect={setLiveMeetingId} />}
+          {activeSection === 'meetings' && <MeetingsView topics={topics} setTopics={setTopics} meetings={meetings} setMeetings={setMeetings} sessions={sessions} setSessions={setSessions} onNav={handleNav} />}
+          {activeSection === 'meeting-live' && <MeetingLive meetings={meetings} setMeetings={setMeetings} topics={topics} setTopics={setTopics} sessions={sessions} selectedId={liveMeetingId} onSelect={setLiveMeetingId} />}
           {activeSection === 'minutes' && <MinutesView topics={topics} setTopics={setTopics} meetings={meetings} />}
           {activeSection === 'actions' && <ActionsView meetings={meetings} />}
           {activeSection === 'roles' && <RolesView />}
