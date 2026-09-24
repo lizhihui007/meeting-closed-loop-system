@@ -18,6 +18,7 @@ type MeetingStatus = '筹备中' | '进行中' | '已结束'
 type Priority = '高' | '中' | '低'
 type MeetingTypeCategory = '总经办' | '经营管理会'
 type TopicKind = '总经办议题' | '经营管理会议题'
+type TradeSecretType = '核心商密' | '普通商密'
 type UserRole = string
 
 type RoleModule = Exclude<NavSection, 'roles'>
@@ -52,6 +53,8 @@ interface Topic {
   estimatedMins: number
   materials: string[]
   isTradeSecret?: boolean
+  /** 商密为「是」时必填：核心商密 / 普通商密 */
+  tradeSecretType?: TradeSecretType
   isMajorDecision?: boolean
   urgency?: '紧急' | '急' | '一般'
   targetMeetings?: string[]
@@ -512,6 +515,9 @@ const INIT_TOPICS: Topic[] = [
     targetMeetings: ['经营调度会', '广汽集团总经理办公会'],
     topicKind: '经营管理会议题',
     urgency: '急',
+    isTradeSecret: true,
+    tradeSecretType: '核心商密',
+    attendDepts: '投资与合作部、资本与金融部、总部资产部、财务本部、品牌公关部、法律与合规部、董办、总经办、审计部、人力资源部、广汽部件',
   },
   {
     id: 'T002',
@@ -674,6 +680,8 @@ const INIT_TOPICS: Topic[] = [
     materials: ['华北渠道下沉方案.pdf', '经销商考核办法（修订稿）.docx', '试点城市测算.xlsx'],
     targetMeetings: ['经营调度会'],
     topicKind: '经营管理会议题',
+    isTradeSecret: true,
+    tradeSecretType: '普通商密',
   },
   {
     id: 'T011',
@@ -1367,6 +1375,99 @@ const meetingStatusColor: Record<MeetingStatus, string> = {
 
 function Badge({ label, color }: { label: string; color: string }) {
   return <span className={`tag ${color}`}>{label}</span>
+}
+
+function TradeSecretBadge({ topic, onSecretClick }: {
+  topic: Pick<Topic, 'isTradeSecret' | 'tradeSecretType'>
+  onSecretClick?: () => void
+}) {
+  if (!topic.isTradeSecret || !topic.tradeSecretType) return null
+  const color = topic.tradeSecretType === '核心商密'
+    ? 'bg-red-50 text-red-700 border border-red-200'
+    : 'bg-amber-50 text-amber-800 border border-amber-200'
+  const badge = <Badge label={topic.tradeSecretType} color={color} />
+  if (onSecretClick) {
+    return (
+      <button
+        type="button"
+        title={`查看${topic.tradeSecretType}须知`}
+        onClick={e => { e.stopPropagation(); onSecretClick() }}
+        style={{
+          flexShrink: 0, padding: 0, border: 'none', background: 'transparent',
+          cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1,
+        }}
+      >
+        {badge}
+      </button>
+    )
+  }
+  return <span style={{ flexShrink: 0 }}>{badge}</span>
+}
+
+/** 商密须知弹窗：按提供的原图一屏展示，不改动图内文案 */
+function TradeSecretNoticeModal({ kind, onClose }: {
+  title?: string
+  kind: TradeSecretType
+  meetingLabel?: string
+  attendDepts?: string
+  onClose: () => void
+}) {
+  const isCore = kind === '核心商密'
+  const natW = 1024
+  const natH = isCore ? 567 : 559
+  const src = isCore ? '/gac-core-secret-notice.png' : '/gac-normal-secret-notice.png'
+  const alt = isCore ? '广汽核心商密须知' : '广汽普通商密须知'
+
+  return (
+    <div
+      className="modal-overlay"
+      style={{
+        zIndex: 1300,
+        background: 'rgba(0,0,0,0.55)',
+        padding: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-label={alt}
+        onClick={e => e.stopPropagation()}
+        style={{ position: 'relative', lineHeight: 0, display: 'inline-block' }}
+      >
+        <button
+          type="button"
+          aria-label="关闭"
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: 6, right: 8, zIndex: 2,
+            width: 28, height: 28, border: 'none', background: 'transparent',
+            color: '#666', cursor: 'pointer', fontSize: 22, lineHeight: 1, fontFamily: 'inherit',
+          }}
+        >
+          ×
+        </button>
+        <img
+          src={src}
+          alt={alt}
+          width={natW}
+          height={natH}
+          style={{
+            display: 'block',
+            width: 'auto',
+            height: 'auto',
+            maxWidth: `min(96vw, ${natW}px)`,
+            maxHeight: `min(92vh, ${natH}px)`,
+            objectFit: 'contain',
+            background: '#fff',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.35)',
+          }}
+        />
+      </div>
+    </div>
+  )
 }
 
 function SectionHeader({ title, subtitle, action }: {
@@ -2708,6 +2809,7 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
   const [showNotifyModal, setShowNotifyModal] = useState(false)
   const [showAgendaOverview, setShowAgendaOverview] = useState(false)
   const [detailTopic, setDetailTopic] = useState<Topic | null>(null)
+  const [coreNotice, setCoreNotice] = useState<Topic | null>(null)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [overIdx, setOverIdx] = useState<number | null>(null)
   const meetingTopics = [...meeting.meetingTopics].sort((a, b) => a.order - b.order)
@@ -2830,6 +2932,15 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
           existingTopics={topics}
           onClose={() => setDetailTopic(null)}
           onSave={saved => setTopics(prev => prev.map(t => t.id === saved.id ? saved : t))}
+        />
+      )}
+      {coreNotice && (
+        <TradeSecretNoticeModal
+          title={coreNotice.title}
+          kind={coreNotice.tradeSecretType || '核心商密'}
+          meetingLabel={meetingTypeName(meeting.typeId, meetingTypes)}
+          attendDepts={coreNotice.attendDepts}
+          onClose={() => setCoreNotice(null)}
         />
       )}
 
@@ -3004,7 +3115,10 @@ function MeetingDetail({ meeting, topics, setTopics, onBack, onUpdate, onDelete,
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 8 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>{t.title}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)', minWidth: 0, flex: 1 }}>{t.title}</div>
+                              <TradeSecretBadge topic={t} onSecretClick={() => setCoreNotice(t)} />
+                            </div>
                             <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
                               汇报人：{t.presenter} · {t.dept}
                             </div>
@@ -3586,8 +3700,10 @@ function MeetingAgendaPanel({
   onUpdate: (m: Meeting) => void
   onToast?: (msg: string) => void
 }) {
+  const { meetingTypes } = useMeetingCatalog()
   const [showPicker, setShowPicker] = useState(false)
   const [detailTopic, setDetailTopic] = useState<Topic | null>(null)
+  const [coreNotice, setCoreNotice] = useState<Topic | null>(null)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [overIdx, setOverIdx] = useState<number | null>(null)
   const meetingTopics = [...meeting.meetingTopics].sort((a, b) => a.order - b.order)
@@ -3683,6 +3799,15 @@ function MeetingAgendaPanel({
           onSave={saved => setTopics(prev => prev.map(t => t.id === saved.id ? saved : t))}
         />
       )}
+      {coreNotice && (
+        <TradeSecretNoticeModal
+          title={coreNotice.title}
+          kind={coreNotice.tradeSecretType || '核心商密'}
+          meetingLabel={meetingTypeName(meeting.typeId, meetingTypes)}
+          attendDepts={coreNotice.attendDepts}
+          onClose={() => setCoreNotice(null)}
+        />
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--secondary)', borderBottom: '1px solid var(--border)', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -3767,7 +3892,10 @@ function MeetingAgendaPanel({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3 }}>{t.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, minWidth: 0, flex: 1 }}>{t.title}</div>
+                          <TradeSecretBadge topic={t} onSecretClick={() => setCoreNotice(t)} />
+                        </div>
                         <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>汇报人：{t.presenter} · {t.dept}</div>
                       </div>
                       <div
@@ -4697,6 +4825,19 @@ function YesNo({ value, onChange, disabled }: { value: boolean; onChange: (v: bo
   )
 }
 
+function TradeSecretTypePick({ value, onChange, disabled }: {
+  value: TradeSecretType | ''
+  onChange: (v: TradeSecretType) => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="yn">
+      <button type="button" className={value === '核心商密' ? 'is-on' : ''} disabled={disabled} onClick={() => onChange('核心商密')}>核心商密</button>
+      <button type="button" className={value === '普通商密' ? 'is-on' : ''} disabled={disabled} onClick={() => onChange('普通商密')}>普通商密</button>
+    </div>
+  )
+}
+
 const DEPTS = ['战略发展部', '信息技术部', '人力资源部', '投资发展部', '合规法务部', '财务管理部', '市场营销部', '供应链管理部', '安全环保部', '集团管控部']
 
 function _SubmitTopicModal_UNUSED({ onClose, onSave }: {
@@ -5494,6 +5635,7 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
     topicKind: (source?.topicKind ?? '总经办议题') as TopicKind,
     title: source?.title ?? '',
     isTradeSecret: source?.isTradeSecret ?? false,
+    tradeSecretType: (source?.tradeSecretType ?? '') as TradeSecretType | '',
     isMajorDecision: source?.isMajorDecision ?? false,
     urgency: (source?.urgency ?? urgencyFromPriority(source?.priority)) as '紧急' | '急' | '一般',
     targetMeetings: source?.targetMeetings ?? [],
@@ -5553,6 +5695,7 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
       urgency: '急',
       isMajorDecision: true,
       isTradeSecret: false,
+      tradeSecretType: '',
       targetMeetings: f.targetMeetings.length ? f.targetMeetings : ['广汽集团总经理办公会'],
       preLeader: true,
       estimatedMins: 5,
@@ -5616,6 +5759,7 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
       estimatedMins: mins,
       materials: files.map(f => f.name),
       isTradeSecret: form.isTradeSecret,
+      tradeSecretType: form.isTradeSecret ? (form.tradeSecretType || undefined) : undefined,
       isMajorDecision: form.topicKind === '总经办议题' ? form.isMajorDecision : false,
       urgency: form.topicKind === '总经办议题' ? urgency : '一般',
       targetMeetings: form.targetMeetings,
@@ -5632,7 +5776,8 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
   }
 
   const minsOk = !form.minsOther || (Number(form.customMins) > 0)
-  const canSave = !!(form.title && form.dept && form.submitter && form.presenter && form.targetMeetings.length > 0 && files.length > 0 && minsOk)
+  const tradeSecretOk = !form.isTradeSecret || !!form.tradeSecretType
+  const canSave = !!(form.title && form.dept && form.submitter && form.presenter && form.targetMeetings.length > 0 && files.length > 0 && minsOk && tradeSecretOk)
   const inputCls = `field-input${!isEditable ? ' is-ro' : ''}`
   const isOffice = form.topicKind === '总经办议题'
   const typeNames = typeNamesForKind(meetingTypes, form.topicKind)
@@ -5814,9 +5959,17 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
         <div className="field-note" style={{ marginBottom: 12 }}>无关联议题</div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: isOffice ? '1fr 1fr 1fr' : '1fr', gap: 12, marginBottom: isOffice ? 0 : 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isOffice ? '1fr 1fr 1fr' : '1fr', gap: 12, marginBottom: form.isTradeSecret ? 0 : (isOffice ? 0 : 14) }}>
         <Field label="是否属于商密" required={isEditable}>
-          <YesNo value={form.isTradeSecret} disabled={!isEditable} onChange={v => set('isTradeSecret', v)} />
+          <YesNo
+            value={form.isTradeSecret}
+            disabled={!isEditable}
+            onChange={v => setForm(f => ({
+              ...f,
+              isTradeSecret: v,
+              tradeSecretType: v ? f.tradeSecretType : '',
+            }))}
+          />
         </Field>
         {isOffice && (
           <Field label="是否三重一大" required={isEditable}>
@@ -5833,6 +5986,18 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
           </Field>
         )}
       </div>
+      {form.isTradeSecret && (
+        <Field label="商密类型" required={isEditable}>
+          <TradeSecretTypePick
+            value={form.tradeSecretType}
+            disabled={!isEditable}
+            onChange={v => set('tradeSecretType', v)}
+          />
+          {isEditable && !form.tradeSecretType && (
+            <div className="field-note" style={{ marginTop: 6 }}>请选择核心商密或普通商密</div>
+          )}
+        </Field>
+      )}
 
       <Field label="拟上会议" required={isEditable}>
         {isOffice && (
@@ -6029,8 +6194,8 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
   )
 }
 
-const IMPORT_HEADERS_OFFICE = ['议题名称', '经办部门', '经办人', '汇报人', '拟上会议', '汇报时长', '是否商密', '是否三重一大', '紧急程度', '列席部门', '列席企业', '备注']
-const IMPORT_HEADERS_OPS = ['议题名称', '经办部门', '经办人', '汇报人', '拟上会议', '汇报时长', '是否商密', '列席部门', '列席企业', '备注']
+const IMPORT_HEADERS_OFFICE = ['议题名称', '经办部门', '经办人', '汇报人', '拟上会议', '汇报时长', '是否商密', '商密类型', '是否三重一大', '紧急程度', '列席部门', '列席企业', '备注']
+const IMPORT_HEADERS_OPS = ['议题名称', '经办部门', '经办人', '汇报人', '拟上会议', '汇报时长', '是否商密', '商密类型', '列席部门', '列席企业', '备注']
 
 function importHeadersForKind(kind: TopicKind) {
   return kind === '经营管理会议题' ? IMPORT_HEADERS_OPS : IMPORT_HEADERS_OFFICE
@@ -6070,8 +6235,8 @@ function downloadTopicTemplate(kind: TopicKind, meetingTypes: MeetingTypeDef[]) 
   const typeNames = typeNamesForKind(meetingTypes, kind)
   const sampleMeeting = typeNames[0] ?? (kind === '经营管理会议题' ? '月度经营分析会' : '广汽集团总经理办公会')
   const example = kind === '经营管理会议题'
-    ? ['月度经营数据复盘与四季度策略预研', '战略发展部', '李建国', '李建国', sampleMeeting, '15', '否', '', '', '示例行，导入前请删除']
-    : ['集团数字化转型四期预研', '信息技术部', '张慧敏', '张慧敏', sampleMeeting, '5', '否', '否', '急', '', '', '示例行，导入前请删除']
+    ? ['月度经营数据复盘与四季度策略预研', '战略发展部', '李建国', '李建国', sampleMeeting, '15', '否', '', '', '', '示例行，导入前请删除']
+    : ['集团数字化转型四期预研', '信息技术部', '张慧敏', '张慧敏', sampleMeeting, '5', '否', '', '否', '急', '', '', '示例行，导入前请删除']
   const cell = (c: string) => `<td>${c.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td>`
   const table = [headers, example].map(r => `<tr>${r.map(cell).join('')}</tr>`).join('')
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table>${table}</table></body></html>`
@@ -6158,6 +6323,16 @@ function TopicImportModal({ topics, onClose, onImport }: {
         const urgency = get('紧急程度')
         if (urgency && !['紧急', '急', '一般'].includes(urgency)) errors.push('紧急程度须为「紧急 / 急 / 一般」')
       }
+      const isSecret = yesNo(get('是否商密'))
+      const secretTypeRaw = get('商密类型')
+      let tradeSecretType: TradeSecretType | undefined
+      if (isSecret) {
+        if (!secretTypeRaw) errors.push('商密为「是」时须填写商密类型（核心商密 / 普通商密）')
+        else if (secretTypeRaw !== '核心商密' && secretTypeRaw !== '普通商密') errors.push('商密类型须为「核心商密」或「普通商密」')
+        else tradeSecretType = secretTypeRaw
+      } else if (secretTypeRaw) {
+        errors.push('商密为「否」时请勿填写商密类型')
+      }
       if (title && topics.some(t => t.title === title)) errors.push('与系统已有议题名称完全重复')
       const dupInFile = grid.slice(1).filter((r, j) => j !== i && (r[idx('议题名称')] ?? '').trim() === title).length
       if (title && dupInFile) errors.push('文件内议题名称重复')
@@ -6178,7 +6353,8 @@ function TopicImportModal({ topics, onClose, onImport }: {
         presenter,
         estimatedMins: mins,
         materials: ['（导入待补材料）'],
-        isTradeSecret: yesNo(get('是否商密')),
+        isTradeSecret: isSecret,
+        tradeSecretType,
         isMajorDecision: kind === '总经办议题' && yesNo(get('是否三重一大')),
         urgency,
         targetMeetings,
@@ -6196,8 +6372,8 @@ function TopicImportModal({ topics, onClose, onImport }: {
   const valid = rows.filter(r => r.ok && r.topic).map(r => r.topic!) as Topic[]
   const kindLabel = kind === '经营管理会议题' ? '经营管理会' : '总经办'
   const fieldHint = kind === '经营管理会议题'
-    ? '模板字段：议题名称、经办部门、经办人、汇报人、拟上会议、汇报时长、是否商密、列席部门、列席企业、备注。无需填写三重一大与紧急程度。'
-    : '模板字段：议题名称、经办部门、经办人、汇报人、拟上会议、汇报时长、是否商密、是否三重一大、紧急程度、列席部门、列席企业、备注。'
+    ? '模板字段：议题名称、经办部门、经办人、汇报人、拟上会议、汇报时长、是否商密、商密类型、列席部门、列席企业、备注。商密为「是」时须填商密类型（核心商密 / 普通商密）。无需填写三重一大与紧急程度。'
+    : '模板字段：议题名称、经办部门、经办人、汇报人、拟上会议、汇报时长、是否商密、商密类型、是否三重一大、紧急程度、列席部门、列席企业、备注。商密为「是」时须填商密类型（核心商密 / 普通商密）。'
 
   return (
     <ModalShell
@@ -6282,6 +6458,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings, applyKind = null
   const [modal, setModal] = useState<{ topic: Topic | null; seed?: Partial<Topic> | null } | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [showShare, setShowShare] = useState(false)
+  const [coreNotice, setCoreNotice] = useState<Topic | null>(null)
   const [toast, setToast] = useState('')
 
   const searched = scopedTopics.filter(t => {
@@ -6354,7 +6531,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings, applyKind = null
     if (isNew) {
       showToast(saved.relatedTopicIds?.length ? '议题已复制申报。' : '议题申报成功。')
       setTimeout(() => {
-        const summary = `【系统生成】${saved.title}。经办部门${saved.dept}，经办人${saved.submitter}，汇报人${saved.presenter}。拟上${saved.targetMeetings?.join('、') || '待定'}，时长${saved.estimatedMins}分钟。${saved.isMajorDecision ? '属三重一大。' : ''}${saved.isTradeSecret ? '涉及商密。' : ''}`
+        const summary = `【系统生成】${saved.title}。经办部门${saved.dept}，经办人${saved.submitter}，汇报人${saved.presenter}。拟上${saved.targetMeetings?.join('、') || '待定'}，时长${saved.estimatedMins}分钟。${saved.isMajorDecision ? '属三重一大。' : ''}${saved.isTradeSecret ? `涉及${saved.tradeSecretType || '商密'}。` : ''}`
         setTopics(prev => prev.map(t => t.id === saved.id ? { ...t, aiSummary: summary } : t))
       }, 1600)
     } else {
@@ -6381,6 +6558,15 @@ function TopicsView({ topics, setTopics, meetings, setMeetings, applyKind = null
   return (
     <div>
       {showShare && <TopicApplyShareModal onClose={() => setShowShare(false)} />}
+      {coreNotice && (
+        <TradeSecretNoticeModal
+          title={coreNotice.title}
+          kind={coreNotice.tradeSecretType || '核心商密'}
+          meetingLabel={coreNotice.targetMeetings?.[0] || (coreNotice.topicKind === '经营管理会议题' ? '经营管理会' : '总经办会')}
+          attendDepts={coreNotice.attendDepts}
+          onClose={() => setCoreNotice(null)}
+        />
+      )}
       {showImport && isManager && (
         <TopicImportModal topics={topics} onClose={() => setShowImport(false)} onImport={handleImport} />
       )}
@@ -6476,7 +6662,10 @@ function TopicsView({ topics, setTopics, meetings, setMeetings, applyKind = null
                   <td style={{ padding: '12px 14px', fontSize: 12, fontFamily: 'JetBrains Mono,monospace', color: 'var(--muted-foreground)' }}>{t.id}</td>
                   <td style={{ padding: '12px 14px' }}><Badge label={t.topicKind ?? '总经办议题'} color={t.topicKind === '经营管理会议题' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-700 border border-slate-200'} /></td>
                   <td style={{ padding: '12px 14px', maxWidth: 260 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{t.title}</div>
+                      <TradeSecretBadge topic={t} onSecretClick={() => setCoreNotice(t)} />
+                    </div>
                     <div style={{ fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {t.outcomes?.[0] ? `结论：${t.outcomes[0].conclusion}` : (t.targetMeetings?.join('、') || t.notes || t.background?.slice(0, 60))}
                     </div>
@@ -7259,10 +7448,12 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd, session, siblings 
   siblings?: Meeting[]
   onSwitchMeeting?: (id: string) => void
 }) {
+  const { meetingTypes } = useMeetingCatalog()
   const m = meeting
   const meetingTopics = [...m.meetingTopics].sort((a, b) => a.order - b.order).map(mt => topics.find(t => t.id === mt.topicId)!).filter(Boolean)
   const [currentIdx, setCurrentIdx] = useState(0)
   const [notifyToast, setNotifyToast] = useState('')
+  const [coreNotice, setCoreNotice] = useState<Topic | null>(null)
 
   useEffect(() => { setCurrentIdx(0) }, [meeting.id])
 
@@ -7274,6 +7465,7 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd, session, siblings 
   const totalMeetingMins = meetingTopics.reduce((s, t) => s + t.estimatedMins, 0)
   const elapsedMins = meetingTopics.slice(0, currentIdx).reduce((s, t) => s + t.estimatedMins, 0)
   const overallPct = Math.round((elapsedMins / totalMeetingMins) * 100)
+  const liveMeetingLabel = meetingTypeName(m.typeId, meetingTypes)
 
   const notifyNext = () => {
     if (!next) return
@@ -7293,6 +7485,15 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd, session, siblings 
 
   return (
     <div style={{ margin: '-28px -32px' }}>
+      {coreNotice && (
+        <TradeSecretNoticeModal
+          title={coreNotice.title}
+          kind={coreNotice.tradeSecretType || '核心商密'}
+          meetingLabel={liveMeetingLabel}
+          attendDepts={coreNotice.attendDepts}
+          onClose={() => setCoreNotice(null)}
+        />
+      )}
 
       {/* ── Header ── */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--border)', padding: '12px 28px 14px', flexShrink: 0 }}>
@@ -7393,7 +7594,16 @@ function MeetingLiveSession({ meeting, topics, onBack, onEnd, session, siblings 
                         {isDone ? '✓' : i + 1}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: isCurrent ? 600 : 400, color: isCurrent ? 'var(--primary)' : isDone ? '#94a3b8' : 'var(--foreground)', lineHeight: 1.4, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                          <div style={{
+                            flex: 1, minWidth: 0, fontSize: 13, fontWeight: isCurrent ? 600 : 400,
+                            color: isCurrent ? 'var(--primary)' : isDone ? '#94a3b8' : 'var(--foreground)',
+                            lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {t.title}
+                          </div>
+                          <TradeSecretBadge topic={t} onSecretClick={() => setCoreNotice(t)} />
+                        </div>
                         <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>汇报人 {t.presenter} · {t.estimatedMins} 分钟</div>
                       </div>
                     </div>
