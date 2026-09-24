@@ -6568,17 +6568,103 @@ function formatCountdown(totalSec: number) {
   return overtime ? `+${body}` : body
 }
 
-/** 投屏倒计时小插件：可拖拽，按议题约定时长倒计时 */
+let countdownAudioCtx: AudioContext | null = null
+
+function getCountdownAudioCtx() {
+  if (typeof window === 'undefined') return null
+  const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!AC) return null
+  if (!countdownAudioCtx) countdownAudioCtx = new AC()
+  return countdownAudioCtx
+}
+
+/**
+ * 投屏倒计时提示音 — 对齐互联网/学术最佳实践：
+ * - Patterson / ISO：圆滑脉冲（软起音 >20ms）、基频 ≤1kHz，靠「脉冲串节奏」提注意力
+ * - 在线倒计时常见做法：880Hz 三声 + 末音略高（可辨、够醒目、不刺耳）
+ * - 紧迫感用节奏加快与重复，不用方波/锯齿硬砸
+ * - 剩 1 分钟 = 温和提醒；结束 = 标准三声 + 再播一轮，避免听不清
+ */
+function playCountdownBeep(kind: 'warn' | 'end') {
+  try {
+    const ctx = getCountdownAudioCtx()
+    if (!ctx) return
+    void ctx.resume()
+
+    // warn：上行三音（温和提醒，约 1.6s）
+    // end：880×3 + 1100 收尾，整段再播一次（约 2.4s，更难漏听）
+    const base =
+      kind === 'warn'
+        ? [
+            { freq: 659, at: 0, dur: 0.28 },
+            { freq: 784, at: 0.38, dur: 0.28 },
+            { freq: 988, at: 0.76, dur: 0.45 },
+          ]
+        : [
+            { freq: 880, at: 0, dur: 0.22 },
+            { freq: 880, at: 0.32, dur: 0.22 },
+            { freq: 880, at: 0.64, dur: 0.22 },
+            { freq: 1100, at: 1.0, dur: 0.4 },
+          ]
+    const loopGap = kind === 'end' ? 1.55 : 0
+    const loops = kind === 'end' ? 2 : 1
+    const peak = kind === 'warn' ? 0.34 : 0.42
+
+    for (let loop = 0; loop < loops; loop++) {
+      const offset = loop * loopGap
+      for (const t of base) {
+        const start = ctx.currentTime + offset + t.at
+        // 后一轮略提一点音量，符合「先轻后醒」避免惊吓
+        const level = peak * (loop === 0 ? 0.88 : 1)
+
+        const master = ctx.createGain()
+        master.gain.setValueAtTime(0.0001, start)
+        master.gain.exponentialRampToValueAtTime(level, start + 0.03)
+        master.gain.setValueAtTime(level * 0.9, start + Math.max(0.05, t.dur - 0.1))
+        master.gain.exponentialRampToValueAtTime(0.0001, start + t.dur)
+        master.connect(ctx.destination)
+
+        // 三角波：比正弦更醒目，比方波远不刺耳；轻加一次谐波增存在感
+        for (const [type, freqMul, mix] of [
+          ['triangle', 1, 0.9],
+          ['sine', 2, 0.12],
+        ] as const) {
+          const osc = ctx.createOscillator()
+          const g = ctx.createGain()
+          osc.type = type
+          osc.frequency.value = t.freq * freqMul
+          g.gain.value = mix
+          osc.connect(g)
+          g.connect(master)
+          osc.start(start)
+          osc.stop(start + t.dur + 0.05)
+        }
+      }
+    }
+  } catch {
+    /* 静音或无 AudioContext 时忽略 */
+  }
+}
+
+/** 投屏倒计时：单环显示已用进度；左键拖动，右键开始/暂停/重置 */
 function PresentCountdownTimer({ mins }: { mins: number }) {
   const total = Math.max(1, Math.round(mins)) * 60
   const [left, setLeft] = useState(total)
   const [running, setRunning] = useState(false)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [pos, setPos] = useState(() => ({
-    x: typeof window !== 'undefined' ? Math.max(8, window.innerWidth - 200) : 24,
+    x: typeof window !== 'undefined' ? Math.max(8, window.innerWidth - 96) : 24,
     y: 68,
   }))
   const dragRef = useRef<{ ox: number; oy: number; sx: number; sy: number } | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const alertFiredRef = useRef({ warn: false, end: false })
+
+  useEffect(() => {
+    setLeft(total)
+    setRunning(false)
+    alertFiredRef.current = { warn: false, end: false }
+  }, [total])
 
   useEffect(() => {
     if (!running) return
@@ -6587,14 +6673,27 @@ function PresentCountdownTimer({ mins }: { mins: number }) {
   }, [running])
 
   useEffect(() => {
+    if (!running) return
+    if (left <= 60 && left > 0 && !alertFiredRef.current.warn) {
+      alertFiredRef.current.warn = true
+      playCountdownBeep('warn')
+    }
+    if (left <= 0 && !alertFiredRef.current.end) {
+      alertFiredRef.current.end = true
+      playCountdownBeep('end')
+    }
+  }, [left, running])
+
+  useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const d = dragRef.current
       if (!d) return
-      const w = panelRef.current?.offsetWidth ?? 180
-      const h = panelRef.current?.offsetHeight ?? 120
-      const nx = Math.min(window.innerWidth - w - 8, Math.max(8, d.sx + e.clientX - d.ox))
-      const ny = Math.min(window.innerHeight - h - 8, Math.max(8, d.sy + e.clientY - d.oy))
-      setPos({ x: nx, y: ny })
+      const w = panelRef.current?.offsetWidth ?? 88
+      const h = panelRef.current?.offsetHeight ?? 88
+      setPos({
+        x: Math.min(window.innerWidth - w - 8, Math.max(8, d.sx + e.clientX - d.ox)),
+        y: Math.min(window.innerHeight - h - 8, Math.max(8, d.sy + e.clientY - d.oy)),
+      })
     }
     const onUp = () => { dragRef.current = null }
     window.addEventListener('mousemove', onMove)
@@ -6605,69 +6704,181 @@ function PresentCountdownTimer({ mins }: { mins: number }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!menu) return
+    const close = () => setMenu(null)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    window.addEventListener('click', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('click', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [menu])
+
   const overtime = left < 0
-  const warn = left >= 0 && left <= 60
-  const accent = overtime ? '#e8a0a0' : warn ? '#e8c07a' : '#c4a35a'
-  const btnBase: React.CSSProperties = {
-    flex: 1, padding: '5px 0', borderRadius: 4, border: '1px solid rgba(255,255,255,0.18)',
-    background: 'rgba(255,255,255,0.06)', color: '#f4f1ea', cursor: 'pointer',
-    fontSize: 11, fontFamily: 'inherit', fontWeight: 600,
+  const warn = !overtime && left <= 60
+  const usedRatio = overtime ? 1 : Math.max(0, Math.min(1, (total - left) / total))
+  const usedPct = Math.round(usedRatio * 100)
+
+  const usedColor = overtime ? '#b83232' : warn ? '#e05555' : '#d64545'
+  const remainColor = overtime ? '#a8c9b8' : '#2f6f5e'
+  const size = 88
+  const cx = size / 2
+  const cy = size / 2
+  const r = 34
+  const circ = 2 * Math.PI * r
+  const stroke = 10
+  const usedLen = usedRatio * circ
+
+  const sub = overtime
+    ? '已超时'
+    : warn && running
+      ? '剩不足 1 分钟'
+      : running
+        ? `已用 ${usedPct}%`
+        : left === total
+          ? '待开始'
+          : '已暂停'
+  const alertPulse = (warn || overtime) && running
+
+  const runMenu = (action: 'start' | 'pause' | 'reset') => {
+    if (action === 'start') {
+      void getCountdownAudioCtx()?.resume()
+      setRunning(true)
+    }
+    if (action === 'pause') setRunning(false)
+    if (action === 'reset') {
+      setRunning(false)
+      setLeft(total)
+      alertFiredRef.current = { warn: false, end: false }
+    }
+    setMenu(null)
   }
 
+  const menuItems: { key: 'start' | 'pause' | 'reset'; label: string; show: boolean }[] = [
+    { key: 'start', label: left === total ? '开始计时' : '继续计时', show: !running },
+    { key: 'pause', label: '暂停', show: running },
+    { key: 'reset', label: '重新计时', show: true },
+  ]
+
   return (
-    <div
-      ref={panelRef}
-      onClick={e => e.stopPropagation()}
-      onMouseDown={e => e.stopPropagation()}
-      style={{
-        position: 'fixed', left: pos.x, top: pos.y, zIndex: 50, width: 176,
-        background: 'rgba(15, 23, 36, 0.92)', border: `1px solid ${accent}55`,
-        borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)',
-        color: '#f4f1ea', userSelect: 'none',
-      }}
-    >
+    <>
+      <style>{`
+        @keyframes present-timer-pulse {
+          0%, 100% { filter: drop-shadow(0 4px 10px rgba(18,35,63,0.28)); opacity: 1; }
+          50% { filter: drop-shadow(0 0 14px rgba(214,69,69,0.55)); opacity: 0.78; }
+        }
+        @keyframes present-timer-text-flash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.45; }
+        }
+      `}</style>
       <div
+        ref={panelRef}
+        title="拖动移动 · 右键操作"
+        onClick={e => e.stopPropagation()}
         onMouseDown={e => {
+          e.stopPropagation()
+          if (e.button !== 0) return
           e.preventDefault()
+          setMenu(null)
           dragRef.current = { ox: e.clientX, oy: e.clientY, sx: pos.x, sy: pos.y }
         }}
+        onContextMenu={e => {
+          e.preventDefault()
+          e.stopPropagation()
+          setMenu({
+            x: Math.min(e.clientX, window.innerWidth - 128),
+            y: Math.min(e.clientY, window.innerHeight - 108),
+          })
+        }}
         style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px 4px',
-          cursor: 'grab', borderBottom: '1px solid rgba(255,255,255,0.08)',
+          position: 'fixed', left: pos.x, top: pos.y, zIndex: 50,
+          width: size, height: size, borderRadius: '50%',
+          background: 'transparent',
+          cursor: 'grab', userSelect: 'none',
+          filter: 'drop-shadow(0 4px 10px rgba(18,35,63,0.28))',
+          animation: alertPulse ? `present-timer-pulse ${overtime ? '0.7s' : '1.1s'} ease-in-out infinite` : undefined,
         }}
       >
-        <span style={{ fontSize: 10, color: 'rgba(244,241,234,0.45)', letterSpacing: '0.06em' }}>⋮⋮</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: accent }}>议题计时</span>
-        <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(244,241,234,0.4)' }}>约定 {mins} 分</span>
-      </div>
-      <div style={{ padding: '10px 12px 12px', textAlign: 'center' }}>
-        <div style={{
-          fontFamily: 'JetBrains Mono, monospace', fontSize: 28, fontWeight: 700,
-          letterSpacing: '0.04em', color: accent, lineHeight: 1.1, marginBottom: 4,
-        }}>
-          {formatCountdown(left)}
-        </div>
-        <div style={{ fontSize: 10, color: 'rgba(244,241,234,0.4)', marginBottom: 10 }}>
-          {running ? (overtime ? '已超时' : '计时中') : left === total ? '未开始' : overtime ? '已暂停 · 超时' : '已暂停'}
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {!running ? (
-            <button type="button" style={{ ...btnBase, background: 'rgba(196,163,90,0.22)', borderColor: 'rgba(196,163,90,0.45)' }} onClick={() => setRunning(true)}>
-              {left === total ? '开启' : '继续'}
-            </button>
-          ) : (
-            <button type="button" style={btnBase} onClick={() => setRunning(false)}>暂停</button>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block' }}>
+          {/* 底轨：绿色 = 剩余 */}
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke={remainColor} strokeWidth={stroke} />
+          {/* 进度：红色 = 已用，顺时针覆盖底轨 */}
+          {usedLen > 0.2 && (
+            <circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={usedColor}
+              strokeWidth={stroke}
+              strokeLinecap="butt"
+              strokeDasharray={`${usedLen} ${circ}`}
+              transform={`rotate(-90 ${cx} ${cy})`}
+              style={{ transition: 'stroke-dasharray 0.35s linear, stroke 0.2s' }}
+            />
           )}
-          <button
-            type="button"
-            style={btnBase}
-            onClick={() => { setRunning(false); setLeft(total) }}
-          >
-            重新计时
-          </button>
+        </svg>
+
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+        }}>
+          <div style={{
+            fontFamily: '"SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif',
+            fontSize: overtime ? 14 : 16,
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            color: overtime || warn ? '#b83232' : '#2f6f5e',
+            lineHeight: 1,
+            textShadow: '0 1px 2px rgba(255,255,255,0.9), 0 0 8px rgba(255,255,255,0.65)',
+            animation: alertPulse ? `present-timer-text-flash ${overtime ? '0.7s' : '1.1s'} ease-in-out infinite` : undefined,
+          }}>
+            {formatCountdown(left)}
+          </div>
+          <div style={{
+            marginTop: 4, fontSize: 9, fontWeight: 600,
+            color: overtime || warn ? usedColor : '#4a5568',
+            textShadow: '0 1px 2px rgba(255,255,255,0.85)',
+          }}>
+            {sub}
+          </div>
         </div>
       </div>
-    </div>
+
+      {menu && (
+        <div
+          onClick={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
+          style={{
+            position: 'fixed', left: menu.x, top: menu.y, zIndex: 60,
+            minWidth: 118, padding: 5,
+            background: 'rgba(255,255,255,0.98)', border: '1px solid #e6e8ec', borderRadius: 10,
+            boxShadow: '0 12px 32px rgba(27,54,93,0.18)',
+          }}
+        >
+          {menuItems.filter(i => i.show).map(item => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => runMenu(item.key)}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '8px 11px', border: 'none', borderRadius: 6,
+                background: 'transparent', cursor: 'pointer',
+                fontSize: 12, fontFamily: 'inherit', color: '#1c2430', fontWeight: 500,
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#f0f4fa' }}
+              onMouseOut={e => { e.currentTarget.style.background = 'transparent' }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   )
 }
 
