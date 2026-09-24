@@ -5465,7 +5465,7 @@ function MeetingTypesView() {
 
 function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSave, onLock, onDelete }: {
   topic: Topic | null
-  seed?: Topic | null
+  seed?: Partial<Topic> | null
   existingTopics?: Topic[]
   onClose: () => void
   onSave: (t: Topic) => void
@@ -5476,7 +5476,7 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
   const { role, roles, userName } = usePermission()
   const isManager = roleIsManager(role, roles)
   const isCreate = topic === null
-  const isCopy = isCreate && !!seed
+  const isCopy = isCreate && !!(seed?.relatedTopicIds?.length)
   const source = topic ?? seed
   // 待安排、已安排可改；锁定中 / 已上会（含材料）只读
   const isEditable = isCreate || topic.status === '待安排' || topic.status === '已安排'
@@ -5512,10 +5512,10 @@ function TopicFormModal({ topic, seed = null, existingTopics = [], onClose, onSa
     relatedTopicIds: source?.relatedTopicIds ?? [],
   })
   const [files, setFiles] = useState<{ id: number; name: string; size: string }[]>(
-    source?.materials.map((m, i) => ({ id: i, name: m, size: '—' })) ?? []
+    source?.materials?.map((m, i) => ({ id: i, name: m, size: '—' })) ?? []
   )
   const fileRef = useRef<HTMLInputElement>(null)
-  const nextId = useRef(source?.materials.length ?? 0)
+  const nextId = useRef(source?.materials?.length ?? 0)
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'processing'>('idle')
   const voiceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [titleChecked, setTitleChecked] = useState(() => !!(source?.title?.trim()))
@@ -6262,11 +6262,13 @@ function TopicImportModal({ topics, onClose, onImport }: {
   )
 }
 
-function TopicsView({ topics, setTopics, meetings, setMeetings }: {
+function TopicsView({ topics, setTopics, meetings, setMeetings, applyKind = null, onApplyConsumed }: {
   topics: Topic[]
   setTopics: React.Dispatch<React.SetStateAction<Topic[]>>
   meetings: Meeting[]
   setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>
+  applyKind?: TopicKind | null
+  onApplyConsumed?: () => void
 }) {
   const { role, roles, userName } = usePermission()
   const isManager = roleIsManager(role, roles)
@@ -6277,8 +6279,9 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
   const [month, setMonth] = useState(currentYearMonth) // YYYY-MM，默认本月
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [modal, setModal] = useState<{ topic: Topic | null; seed?: Topic | null } | null>(null)
+  const [modal, setModal] = useState<{ topic: Topic | null; seed?: Partial<Topic> | null } | null>(null)
   const [showImport, setShowImport] = useState(false)
+  const [showShare, setShowShare] = useState(false)
   const [toast, setToast] = useState('')
 
   const searched = scopedTopics.filter(t => {
@@ -6299,6 +6302,14 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
   const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   useEffect(() => { setPage(1) }, [filter, keyword, month, pageSize])
+
+  useEffect(() => {
+    if (!applyKind) return
+    setModal({ topic: null, seed: { topicKind: applyKind } })
+    onApplyConsumed?.()
+  // 仅在深链 applyKind 变化时打开一次；回调身份变化不重复触发
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyKind])
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
 
@@ -6369,6 +6380,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
 
   return (
     <div>
+      {showShare && <TopicApplyShareModal onClose={() => setShowShare(false)} />}
       {showImport && isManager && (
         <TopicImportModal topics={topics} onClose={() => setShowImport(false)} onImport={handleImport} />
       )}
@@ -6389,6 +6401,7 @@ function TopicsView({ topics, setTopics, meetings, setMeetings }: {
         subtitle={subtitle}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
+            <Btn label="分享申报入口" variant="secondary" onClick={() => setShowShare(true)} />
             {isManager && <Btn label="Excel 导入" variant="secondary" onClick={() => setShowImport(true)} />}
             <Btn label="+ 申报议题" variant="primary" onClick={() => setModal({ topic: null })} />
           </div>
@@ -6521,6 +6534,119 @@ function parsePresentHash() {
     meeting: p.get('meeting') || '',
     mins: Number.isFinite(minsRaw) && minsRaw > 0 ? minsRaw : 5,
   }
+}
+
+/** 议题申报深链：#/topics?apply=office | ops */
+function parseTopicApplyHash(): TopicKind | null {
+  const raw = window.location.hash
+  if (!raw.startsWith('#/topics')) return null
+  const q = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : ''
+  const apply = new URLSearchParams(q).get('apply')?.trim()
+  if (!apply) return null
+  if (apply === 'office' || apply === 'zjb' || apply === '总经办' || apply === '总经办议题') return '总经办议题'
+  if (apply === 'ops' || apply === 'jyg' || apply === '经营管理会' || apply === '经营管理会议题') return '经营管理会议题'
+  return null
+}
+
+function topicApplyShareUrl(kind: TopicKind) {
+  const apply = kind === '经营管理会议题' ? 'ops' : 'office'
+  const base = `${window.location.origin}${window.location.pathname}${window.location.search}`
+  return `${base}#/topics?apply=${apply}`
+}
+
+function clearTopicApplyHash() {
+  const raw = window.location.hash
+  if (!raw.startsWith('#/topics')) return
+  const next = `${window.location.pathname}${window.location.search}#/topics`
+  window.history.replaceState(null, '', next)
+}
+
+function topicApplyQrSrc(url: string, size = 180) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=10&data=${encodeURIComponent(url)}`
+}
+
+function TopicApplyShareModal({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = useState<TopicKind | null>(null)
+  const items: { kind: TopicKind; title: string; desc: string }[] = [
+    { kind: '总经办议题', title: '总经办会议题申报', desc: '打开后自动进入议题申报页并弹出表单，议题类型已选「总经办议题」' },
+    { kind: '经营管理会议题', title: '经营管理会议题申报', desc: '打开后自动进入议题申报页并弹出表单，议题类型已选「经营管理会议题」' },
+  ]
+
+  const copyLink = async (kind: TopicKind) => {
+    const url = topicApplyShareUrl(kind)
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      window.prompt('复制下面的链接', url)
+    }
+    setCopied(kind)
+    window.setTimeout(() => setCopied(k => (k === kind ? null : k)), 2000)
+  }
+
+  return (
+    <ModalShell title="分享议题申报入口" kicker="链接 / 二维码" width={720} onClose={onClose}
+      footer={<ModalFoot><Btn label="关闭" variant="ghost" onClick={onClose} /></ModalFoot>}
+    >
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--muted-foreground)', lineHeight: 1.6 }}>
+        将对应入口发给同事：通过链接或扫码可直接进入议题申报，并自动打开申报弹框且预填议题类型。
+      </p>
+      <div style={{ display: 'grid', gap: 14 }}>
+        {items.map(item => {
+          const url = topicApplyShareUrl(item.kind)
+          return (
+            <div
+              key={item.kind}
+              style={{
+                display: 'flex', gap: 16, alignItems: 'stretch',
+                padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--secondary)',
+              }}
+            >
+              <div style={{
+                flexShrink: 0, width: 132, padding: 8, borderRadius: 8, background: '#fff',
+                border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+              }}>
+                <img
+                  src={topicApplyQrSrc(url, 160)}
+                  alt={`${item.title}二维码`}
+                  width={112}
+                  height={112}
+                  style={{ display: 'block', width: 112, height: 112 }}
+                />
+                <span style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>扫码申报</span>
+              </div>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--foreground)' }}>{item.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4, lineHeight: 1.5 }}>{item.desc}</div>
+                </div>
+                <div style={{
+                  fontSize: 11, fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                  color: 'var(--muted-foreground)', background: '#fff', border: '1px solid var(--border)',
+                  borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all', lineHeight: 1.45,
+                }}>
+                  {url}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+                  <Btn
+                    label={copied === item.kind ? '已复制' : '复制链接'}
+                    variant="primary"
+                    small
+                    onClick={() => void copyLink(item.kind)}
+                  />
+                  <Btn
+                    label="打开预览"
+                    variant="secondary"
+                    small
+                    onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </ModalShell>
+  )
 }
 
 function openMaterialPresent(opts: { file: string; topic?: string; meeting?: string; mins?: number }) {
@@ -8601,7 +8727,8 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function App() {
   const [present, setPresent] = useState(() => parsePresentHash())
-  const [activeSection, setActiveSection] = useState<NavSection>('meetings')
+  const [topicApplyKind, setTopicApplyKind] = useState<TopicKind | null>(() => parseTopicApplyHash())
+  const [activeSection, setActiveSection] = useState<NavSection>(() => (parseTopicApplyHash() ? 'topics' : 'meetings'))
   const [topics, setTopics] = useState<Topic[]>(INIT_TOPICS)
   const [meetings, setMeetings] = useState<Meeting[]>(INIT_MEETINGS)
   const [sessions, setSessions] = useState<MeetingSession[]>(INIT_SESSIONS)
@@ -8619,10 +8746,22 @@ export default function App() {
   }, [sidebarCollapsed])
 
   useEffect(() => {
-    const sync = () => setPresent(parsePresentHash())
+    const sync = () => {
+      setPresent(parsePresentHash())
+      const apply = parseTopicApplyHash()
+      if (apply) {
+        setTopicApplyKind(apply)
+        setActiveSection('topics')
+      }
+    }
     window.addEventListener('hashchange', sync)
     return () => window.removeEventListener('hashchange', sync)
   }, [])
+
+  const consumeTopicApply = () => {
+    setTopicApplyKind(null)
+    clearTopicApplyHash()
+  }
 
   if (present) {
     return <MaterialPresentView file={present.file} topic={present.topic} meeting={present.meeting} mins={present.mins} />
@@ -8817,7 +8956,16 @@ export default function App() {
         <main style={{ flex: 1, padding: '28px 32px' }}>
           {activeSection === 'dashboard' && <Dashboard onNav={handleNav} topics={topics} meetings={meetings} />}
           {activeSection === 'meeting-types' && <MeetingTypesView />}
-          {activeSection === 'topics' && <TopicsView topics={topics} setTopics={setTopics} meetings={meetings} setMeetings={setMeetings} />}
+          {activeSection === 'topics' && (
+            <TopicsView
+              topics={topics}
+              setTopics={setTopics}
+              meetings={meetings}
+              setMeetings={setMeetings}
+              applyKind={topicApplyKind}
+              onApplyConsumed={consumeTopicApply}
+            />
+          )}
           {activeSection === 'meetings' && <MeetingsView topics={topics} setTopics={setTopics} meetings={meetings} setMeetings={setMeetings} sessions={sessions} setSessions={setSessions} onNav={handleNav} />}
           {activeSection === 'meeting-live' && <MeetingLive meetings={meetings} setMeetings={setMeetings} topics={topics} setTopics={setTopics} sessions={sessions} selectedId={liveMeetingId} onSelect={setLiveMeetingId} />}
           {activeSection === 'minutes' && <MinutesView topics={topics} setTopics={setTopics} meetings={meetings} />}
